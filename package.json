@@ -1,0 +1,35 @@
+{
+  "name": "student-progress-dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Student Progress Dashboard — Phase 0 foundation",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "postinstall": "npm run build --workspace @spd/shared",
+    "predev": "npm run build --workspace @spd/shared",
+    "dev": "concurrently -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev --workspace @spd/server",
+    "dev:client": "npm run dev --workspace @spd/client",
+    "build": "npm run build --workspace @spd/shared && npm run build --workspace @spd/server && npm run build --workspace @spd/client",
+    "test": "npm run build --workspace @spd/shared && npm run test --workspaces --if-present",
+    "typecheck": "npm run build --workspace @spd/shared && npm run typecheck --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace @spd/server",
+    "db:seed": "npm run db:seed --workspace @spd/server",
+    "db:reset": "npm run db:reset --workspace @spd/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "msw": {
+    "workerDirectory": [
+      "client/public"
+    ]
+  }
+}
