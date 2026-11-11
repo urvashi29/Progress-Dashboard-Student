@@ -2,12 +2,22 @@ import { buildCatalogResponse } from '@spd/shared'
 import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { env } from './config/env'
+import { sessionIdentityResolver, type IdentityResolver } from './http/identity'
+import { createMeRouter } from './http/me-routes'
+import { systemClock, type Clock } from './platform/time'
+import type { Repositories } from './repositories/contracts'
+import { createKnexRepositories } from './repositories/knex'
 
-/**
- * Phase 0 API surface only: liveness and the read-only catalog skeleton.
- * Auth, import, dashboard, and coach routes land in later phases.
- */
-export function createApp(): express.Express {
+export interface CreateAppOptions {
+  /** Injectable persistence adapter; defaults to read-only Knex repositories. */
+  repositories?: Repositories
+  /** Injectable clock keeps health and timestamps deterministic in tests. */
+  clock?: Clock
+  identityResolver?: IdentityResolver
+  timeZone?: string
+}
+
+export function createApp(options: CreateAppOptions = {}): express.Express {
   const app = express()
 
   app.disable('x-powered-by')
@@ -21,6 +31,16 @@ export function createApp(): express.Express {
   app.get('/api/v1/catalog/modules', (_req: Request, res: Response) => {
     res.json(buildCatalogResponse())
   })
+
+  app.use(
+    '/api/v1/me',
+    createMeRouter({
+      repositories: options.repositories ?? createKnexRepositories(),
+      clock: options.clock ?? systemClock,
+      identityResolver: options.identityResolver ?? sessionIdentityResolver,
+      timeZone: options.timeZone,
+    }),
+  )
 
   app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'not_found', path: req.path })
