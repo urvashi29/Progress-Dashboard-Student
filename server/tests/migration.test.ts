@@ -83,8 +83,46 @@ describe('Phase 0 database schema', () => {
         'skills',
         'events',
         'imports',
+        'sessions',
       ]),
     )
+  })
+
+  it('adds Phase 1 role, sessions, and nullable overall progress', async () => {
+    const studentId = await createStudent('phase1-schema@example.com')
+
+    await db('enrollments').insert({
+      student_id: studentId,
+      cohort: 'PHASE1-COHORT',
+      plan_type: 'masters',
+      sub_plan_type: null,
+      course_type: 'data-science',
+      cohort_start_date: '2025-01-01',
+      enrolled_at: '2025-01-01',
+      access_expiry_date: '2026-01-01',
+      overall_progress_pct: null,
+      progress_updated_at: '2025-12-01',
+      import_id: null,
+    })
+
+    const enrollment = await db('enrollments')
+      .where({ student_id: studentId, cohort: 'PHASE1-COHORT' })
+      .first<{ overall_progress_pct: number | null }>('overall_progress_pct')
+    expect(enrollment?.overall_progress_pct).toBeNull()
+
+    const student = await db('students')
+      .where({ id: studentId })
+      .first<{ role: string }>('role')
+    expect(student?.role).toBe('student')
+
+    await db('sessions').insert({
+      sid: 'phase1-session',
+      data: '{}',
+      expires_at: Date.now() + 1000,
+      created_at: new Date().toISOString(),
+    })
+    const session = await db('sessions').where({ sid: 'phase1-session' }).first()
+    expect(session).toBeTruthy()
   })
 
   it('enforces a unique (enrollment_id, module_id) pair', async () => {
