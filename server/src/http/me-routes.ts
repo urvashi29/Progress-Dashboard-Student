@@ -4,6 +4,13 @@ import { systemClock } from '../platform/time'
 import type { Repositories } from '../repositories/contracts'
 import { buildDashboard } from '../services/dashboard'
 import { buildModuleDetail, buildModuleList } from '../services/modules'
+import {
+  buildCareerPathDetail,
+  buildCareerPathMatches,
+  buildSkillList,
+  buildSkillography,
+  type SkillographyInput,
+} from '../services/skillography'
 import { sessionIdentityResolver, type IdentityResolver } from './identity'
 
 export interface MeRouterDependencies {
@@ -60,6 +67,26 @@ export function createMeRouter(dependencies: MeRouterDependencies): Router {
   const router = Router()
   const clock = dependencies.clock ?? systemClock
   const timeZone = dependencies.timeZone
+
+  async function loadSkillographyInput(
+    req: Request,
+    res: Response,
+  ): Promise<SkillographyInput | null> {
+    const context = await loadStudentContext(dependencies, req, res)
+    if (!context) return null
+
+    const moduleProgress = await dependencies.repositories.moduleProgress.listModuleProgress(
+      context.enrollment.id,
+    )
+
+    return {
+      student: context.student,
+      enrollment: context.enrollment,
+      moduleProgress,
+      now: clock.now(),
+      timeZone,
+    }
+  }
 
   router.get(
     '/dashboard',
@@ -132,6 +159,55 @@ export function createMeRouter(dependencies: MeRouterDependencies): Router {
 
       if (!detail) {
         res.status(404).json({ error: 'module_not_found', slug })
+        return
+      }
+
+      res.json(detail)
+    }),
+  )
+
+  router.get(
+    '/skills',
+    asyncRoute(async (req, res) => {
+      const input = await loadSkillographyInput(req, res)
+      if (!input) return
+      res.json(buildSkillList(input))
+    }),
+  )
+
+  router.get(
+    '/skillography',
+    asyncRoute(async (req, res) => {
+      const input = await loadSkillographyInput(req, res)
+      if (!input) return
+      res.json(buildSkillography(input))
+    }),
+  )
+
+  router.get(
+    '/career-paths',
+    asyncRoute(async (req, res) => {
+      const input = await loadSkillographyInput(req, res)
+      if (!input) return
+      res.json(buildCareerPathMatches(input))
+    }),
+  )
+
+  router.get(
+    '/career-paths/:slug',
+    asyncRoute(async (req, res) => {
+      const input = await loadSkillographyInput(req, res)
+      if (!input) return
+
+      const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug
+      if (!slug) {
+        res.status(404).json({ error: 'career_path_not_found', slug: slug ?? null })
+        return
+      }
+
+      const detail = buildCareerPathDetail(input, slug)
+      if (!detail) {
+        res.status(404).json({ error: 'career_path_not_found', slug })
         return
       }
 

@@ -3,6 +3,7 @@ import type {
   ModuleProgressBand,
   RecommendationType,
   SkillImportance,
+  SkillStatus,
 } from '@spd/shared'
 
 export type Tone = 'positive' | 'neutral' | 'warning' | 'danger' | 'muted' | 'info'
@@ -44,4 +45,26 @@ export const SKILL_IMPORTANCE_LABEL: Record<SkillImportance, string> = {
   critical: 'Critical skill',
   core: 'Core skill',
   supporting: 'Supporting skill',
+}
+
+export const SKILL_STATUS_LABEL: Record<SkillStatus, string> = {
+  STRONG_EXPOSURE: 'Strong estimated exposure',
+  IN_PROGRESS: 'In progress',
+  NOT_STARTED: 'Not started',
+  NOT_IN_PLAN: 'Not in plan',
+  UNAVAILABLE: 'Progress unavailable',
+}
+
+export const SKILL_STATUS_TONE: Record<SkillStatus, Tone> = {
+  STRONG_EXPOSURE: 'positive',
+  IN_PROGRESS: 'info',
+  NOT_STARTED: 'neutral',
+  NOT_IN_PLAN: 'muted',
+  UNAVAILABLE: 'warning',
+}
+
+export const CAREER_STAGE_TONE: Record<'EXPLORING' | 'BUILDING' | 'DEVELOPING', Tone> = {
+  EXPLORING: 'neutral',
+  BUILDING: 'info',
+  DEVELOPING: 'positive',
 }

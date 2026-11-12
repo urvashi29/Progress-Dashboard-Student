@@ -6,6 +6,7 @@ import { DashboardHeader } from '../components/dashboard/DashboardHeader'
 import { HealthCard } from '../components/dashboard/HealthCard'
 import { ModulesSection } from '../components/dashboard/ModulesSection'
 import { OverallProgressCard } from '../components/dashboard/OverallProgressCard'
+import { SkillographySection } from '../components/dashboard/SkillographySection'
 import { TrackOverview } from '../components/dashboard/TrackOverview'
 import { PageError, PageLoading } from '../components/feedback/AsyncState'
 import { useDashboard } from '../hooks/useDashboard'
@@ -61,6 +62,7 @@ export function DashboardPage() {
 
       <TrackOverview tracks={data.tracks} modules={data.modules} />
       <ModulesSection modules={data.modules} />
+      <SkillographySection />
       <AnalyticsPanel data={data} />
       <CoachPanel summary={data.coachSummary} />
     </div>

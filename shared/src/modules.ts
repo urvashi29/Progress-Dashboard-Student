@@ -28,13 +28,21 @@ export const SkillImportanceSchema = z.enum(['critical', 'core', 'supporting'])
  * literal `true` so a measured-proficiency claim cannot be represented.
  */
 export const SkillSchema = z.object({
+  /** Stable, normalized skill identity (kebab-case). */
+  id: SlugSchema,
   name: z.string().min(1),
+  normalizedName: z.string().min(1),
+  description: z.string().min(1),
   importance: SkillImportanceSchema,
+  /** Weight of this skill within its module. Sums to 1 per module. */
   weight: z.number().finite().min(0).max(1),
   estimated: z.literal(true),
   confidence: ConfidenceSchema,
   prereqSkillNames: z.array(z.string().min(1)).default([]),
+  prereqSkillIds: z.array(SlugSchema).default([]),
   activityTemplates: z.array(ActivityTemplateSchema).default([]),
+  /** Suggested portfolio artefacts that could evidence this skill later. */
+  portfolioEvidence: z.array(z.string().min(1)).default([]),
 })
 
 export const CatalogModuleSchema = z.object({
