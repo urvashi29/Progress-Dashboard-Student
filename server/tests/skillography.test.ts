@@ -187,6 +187,78 @@ describe('GET /api/v1/me/skills', () => {
         ?.estimatedExposurePct,
     ).toBe(25)
   })
+
+  it('requires authentication on every skillography and career endpoint', async () => {
+    const unauthenticated = testApp({ studentId: null })
+    for (const path of [
+      '/api/v1/me/skills',
+      '/api/v1/me/skillography',
+      '/api/v1/me/career-paths',
+      '/api/v1/me/career-paths/junior-data-analyst',
+    ]) {
+      expect((await request(unauthenticated).get(path)).status).toBe(401)
+    }
+  })
+
+  it('keeps skillography and career responses scoped to the session student', async () => {
+    const twoStudents = dataset(
+      [
+        progress('intro-to-computer-programming', 100, true, 1),
+        progress('intro-to-computer-programming', 25, true, 2),
+      ],
+      [getMockStudent(1), getMockStudent(2)],
+      [getMockEnrollment(1), getMockEnrollment(2)],
+    )
+
+    const first = SkillographyResponseSchema.parse(
+      (
+        await request(testApp({ studentId: 1, dataset: twoStudents })).get(
+          '/api/v1/me/skillography',
+        )
+      ).body,
+    )
+    const second = SkillographyResponseSchema.parse(
+      (
+        await request(testApp({ studentId: 2, dataset: twoStudents })).get(
+          '/api/v1/me/skillography',
+        )
+      ).body,
+    )
+
+    expect(first.student.id).toBe(1)
+    expect(second.student.id).toBe(2)
+    expect(
+      first.skills.find((entry) => entry.skillId === 'programming-fundamentals')
+        ?.estimatedExposurePct,
+    ).toBe(100)
+    expect(
+      second.skills.find((entry) => entry.skillId === 'programming-fundamentals')
+        ?.estimatedExposurePct,
+    ).toBe(25)
+
+    const firstCareers = CareerPathListResponseSchema.parse(
+      (
+        await request(testApp({ studentId: 1, dataset: twoStudents })).get(
+          '/api/v1/me/career-paths',
+        )
+      ).body,
+    )
+    const secondCareers = CareerPathListResponseSchema.parse(
+      (
+        await request(testApp({ studentId: 2, dataset: twoStudents })).get(
+          '/api/v1/me/career-paths',
+        )
+      ).body,
+    )
+    expect(
+      firstCareers.careerPaths.find((entry) => entry.slug === 'junior-python-developer')
+        ?.estimatedCoveragePct,
+    ).toBe(40)
+    expect(
+      secondCareers.careerPaths.find((entry) => entry.slug === 'junior-python-developer')
+        ?.estimatedCoveragePct,
+    ).toBe(10)
+  })
 })
 
 describe('GET /api/v1/me/skillography', () => {

@@ -86,6 +86,8 @@ describe('skillography dashboard section', () => {
       name: 'Junior Python Developer',
     })
     expect(within(pythonCard).getAllByText(/curriculum coverage/i).length).toBeGreaterThan(0)
+    expect(within(pythonCard).getByText('Helpful skills to explore')).toBeInTheDocument()
+    expect(within(pythonCard).getByText('Pathway limitations')).toBeInTheDocument()
     expect(within(pythonCard).getByText(/not a job-readiness score/i)).toBeInTheDocument()
     expect(within(pythonCard).getByText(/not a guarantee of employment/i)).toBeInTheDocument()
     expect(

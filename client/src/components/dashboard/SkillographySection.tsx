@@ -57,13 +57,13 @@ function SkillExposureRow({ skill }: { skill: SkillExposure }) {
         </div>
       )}
 
-      <p className="muted skill-exposure__note">
-        {skill.evidenceSources.length > 0
-          ? `Inferred from ${skill.evidenceSources.length} in-plan module${
-              skill.evidenceSources.length === 1 ? '' : 's'
-            }. ${skill.confidenceLabel} ${skill.limitation}`
-          : skill.limitation}
-      </p>
+      {skill.evidenceSources.length > 0 ? (
+        <p className="muted skill-exposure__note">
+          {`Inferred from ${skill.evidenceSources.length} in-plan module${
+            skill.evidenceSources.length === 1 ? '' : 's'
+          }. ${skill.confidenceLabel} ${skill.limitation}`}
+        </p>
+      ) : null}
     </li>
   )
 }

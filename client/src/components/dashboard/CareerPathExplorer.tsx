@@ -102,6 +102,17 @@ function CareerPathCard({ careerPath }: { careerPath: CareerPathMatch }) {
         )}
       </div>
 
+      {careerPath.helpfulSkills.length > 0 ? (
+        <details className="career-card__details">
+          <summary>Helpful skills to explore</summary>
+          <ul className="career-skill-list">
+            {careerPath.helpfulSkills.map((skill) => (
+              <SkillRow key={skill.skillId} skill={skill} />
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
       <details className="career-card__details">
         <summary>Suggested projects and portfolio evidence</summary>
         <ul className="career-card__list">
@@ -134,6 +145,15 @@ function CareerPathCard({ careerPath }: { careerPath: CareerPathMatch }) {
             ))}
           </ul>
         )}
+      </details>
+
+      <details className="career-card__details">
+        <summary>Pathway limitations</summary>
+        <ul className="career-card__list">
+          {careerPath.limitations.map((limitation) => (
+            <li key={limitation}>{limitation}</li>
+          ))}
+        </ul>
       </details>
 
       <div className="career-card__explanation">

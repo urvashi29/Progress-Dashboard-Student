@@ -183,3 +183,4 @@ Client note: Vite resolves `@spd/shared` to `shared/src/index.ts` so UI builds d
 
 - Phase 0 (foundation): initial workspaces, contracts, catalog, SQLite schema, fixtures, MSW, docs.
 - Phase 1 (ingestion-auth): added additive source-name aliases to 6 catalog modules (real spreadsheet labels); proposed making `EnrollmentSchema.overallProgressPct` nullable because the source workbook omits it on 8 rows (store NULL, never 0). Affects api-health and UI; contract itself unchanged pending review.
+- Skillography: extended `SkillSchema` with stable skill ids, normalized names, descriptions, prerequisite ids and portfolio evidence; added `shared/src/skillography.ts` and `shared/src/careers.ts`; added session-scoped `/api/v1/me/skills`, `/me/skillography`, `/me/career-paths` and `/me/career-paths/:slug`; added migration `0003` and catalog/career seed data. All skill exposure remains an estimate, never measured proficiency.

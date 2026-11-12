@@ -88,6 +88,53 @@ describe('Phase 0 database schema', () => {
     )
   })
 
+  it('adds Skillography skill metadata, skill catalog, and career paths', async () => {
+    const tables = await db.raw<Array<{ name: string }>>(
+      "select name from sqlite_master where type = 'table'",
+    )
+    expect(tables.map((row) => row.name)).toEqual(
+      expect.arrayContaining(['skill_catalog', 'career_paths']),
+    )
+
+    const skillColumns = await db.raw<Array<{ name: string }>>('PRAGMA table_info(skills)')
+    expect(skillColumns.map((row) => row.name)).toEqual(
+      expect.arrayContaining([
+        'skill_key',
+        'normalized_name',
+        'description',
+        'portfolio_evidence',
+      ]),
+    )
+
+    await db('skill_catalog').insert({
+      skill_key: 'test-skill',
+      name: 'Test Skill',
+      normalized_name: 'test skill',
+      description: 'Fictional test skill.',
+      importance: 'core',
+      weight: 1,
+      prerequisite_skill_ids: '[]',
+      practice_activities: '[]',
+      portfolio_evidence: '[]',
+      created_at: new Date().toISOString(),
+    })
+    expect(await db('skill_catalog').where({ skill_key: 'test-skill' }).first()).toBeTruthy()
+
+    await db('career_paths').insert({
+      slug: 'test-career',
+      title: 'Test Career',
+      description: 'Fictional test career.',
+      required_skill_ids: '["test-skill"]',
+      helpful_skill_ids: '[]',
+      module_slugs: '[]',
+      suggested_projects: '[]',
+      portfolio_evidence: '[]',
+      pathway_note: 'Exploration only.',
+      created_at: new Date().toISOString(),
+    })
+    expect(await db('career_paths').where({ slug: 'test-career' }).first()).toBeTruthy()
+  })
+
   it('adds Phase 1 role, sessions, and nullable overall progress', async () => {
     const studentId = await createStudent('phase1-schema@example.com')
 
