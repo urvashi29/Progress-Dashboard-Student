@@ -12,6 +12,7 @@
     "test": "vitest run",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "db:demo": "tsx src/db/demo-account.ts",
     "db:reset": "tsx src/db/reset.ts"
   },
   "dependencies": {

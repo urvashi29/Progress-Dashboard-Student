@@ -3,8 +3,10 @@ import {
   CatalogModuleSchema,
   ConfidenceSchema,
   DashboardModuleSchema,
+  IsoDateTimeSchema,
   ModuleProgressBandSchema,
   PercentSchema,
+  SkillSchema,
   SlugSchema,
 } from '@spd/shared'
 import { z } from 'zod'
@@ -35,3 +37,25 @@ export const ModuleDetailResponseSchema = z.object({
 
 export type PrerequisiteModule = z.infer<typeof PrerequisiteModuleSchema>
 export type ModuleDetailResponse = z.infer<typeof ModuleDetailResponseSchema>
+
+/**
+ * Wire contract returned by GET /api/v1/me/modules/:slug (Phase 2 backend).
+ * The UI view model above is derived from this in `api/modules.ts`; MSW serves
+ * the same wire shape so isolated tests exercise the real mapping path.
+ */
+export const ServerModuleActivitySchema = ActivityTemplateSchema.extend({
+  skill: z.string().min(1),
+})
+
+export const ServerModuleDetailSchema = z.object({
+  module: DashboardModuleSchema,
+  skills: z.array(SkillSchema),
+  activities: z.array(ServerModuleActivitySchema),
+  prerequisites: z.array(DashboardModuleSchema),
+  minutesPerProgressPoint: z.number().finite().positive(),
+  skillsAreEstimated: z.literal(true),
+  caveat: z.string().min(1),
+  generatedAt: IsoDateTimeSchema,
+})
+
+export type ServerModuleDetail = z.infer<typeof ServerModuleDetailSchema>

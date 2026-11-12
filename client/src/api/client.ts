@@ -2,6 +2,18 @@ import { z, type ZodTypeAny } from 'zod'
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/+$/, '')
 
+/**
+ * Double-submit CSRF token held in memory only. It is never written to
+ * localStorage/sessionStorage; a reload re-fetches it from the server session.
+ */
+let csrfToken: string | null = null
+
+export function setCsrfToken(token: string | null): void {
+  csrfToken = token
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
 type ApiInit = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
@@ -54,13 +66,15 @@ async function readError(response: Response): Promise<{ message: string | null; 
 }
 
 async function sendRequest(path: string, init: ApiInit): Promise<Response> {
+  const method = init.method ?? 'GET'
   const headers = new Headers()
   if (init.body !== undefined) headers.set('Content-Type', 'application/json')
+  if (!SAFE_METHODS.has(method) && csrfToken) headers.set('x-csrf-token', csrfToken)
 
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      method: init.method ?? 'GET',
+      method,
       credentials: 'include',
       headers,
       body: init.body === undefined ? undefined : JSON.stringify(init.body),

@@ -5,6 +5,7 @@ import { buildModuleDetail } from './data'
 import { clearMockSession, hasMockSession, setMockSession } from './state'
 
 const API = '*/api/v1'
+const MOCK_CSRF_TOKEN = 'mock-csrf-token'
 
 const unauthorized = () =>
   HttpResponse.json(
@@ -21,6 +22,8 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 export const handlers = [
   http.get(`${API}/catalog/modules`, () => HttpResponse.json(buildCatalogResponse())),
+
+  http.get(`${API}/auth/csrf`, () => HttpResponse.json({ csrfToken: MOCK_CSRF_TOKEN })),
 
   http.post(`${API}/auth/login`, async ({ request }) => {
     const payload = asRecord(await request.json().catch(() => null))
@@ -42,7 +45,10 @@ export const handlers = [
     }
 
     setMockSession(true)
-    return HttpResponse.json(MOCK_DASHBOARD.student)
+    return HttpResponse.json({
+      student: MOCK_DASHBOARD.student,
+      csrfToken: MOCK_CSRF_TOKEN,
+    })
   }),
 
   http.post(`${API}/auth/logout`, () => {
@@ -52,7 +58,10 @@ export const handlers = [
 
   http.get(`${API}/auth/me`, () => {
     if (!hasMockSession()) return unauthorized()
-    return HttpResponse.json(MOCK_DASHBOARD.student)
+    return HttpResponse.json({
+      student: MOCK_DASHBOARD.student,
+      csrfToken: MOCK_CSRF_TOKEN,
+    })
   }),
 
   http.get(`${API}/me/dashboard`, () => {
