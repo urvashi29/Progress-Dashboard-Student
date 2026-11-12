@@ -65,9 +65,12 @@ The demo account after `db:demo`:
 
 - Email: `aanya.fictional@example.com`
 - Password: the value of `DEMO_DEFAULT_PASSWORD`, or `demo1234` when it is blank
-- Data: fictional fixture records only
+- Data: fictional fixture records only (13 module rows; 2 intentionally not in plan)
 
-`db:demo` refuses to run when `NODE_ENV=production`.
+To reset the demo password, set `DEMO_DEFAULT_PASSWORD` in `.env` to a new
+local-only value and re-run `npm run db:demo`. It upserts a bcrypt hash and does
+not create duplicate students. `db:demo` refuses to run when
+`NODE_ENV=production`.
 
 ## 4. Start both applications
 
