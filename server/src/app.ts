@@ -8,13 +8,27 @@ import { createSessionMiddleware } from './auth/session'
 import { env } from './config/env'
 import { db } from './db/client'
 import { apiErrorHandler } from './http/errors'
+import { sessionIdentityResolver, type IdentityResolver } from './http/identity'
+import { createMeRouter } from './http/me-routes'
 import { createAdminImportRouter } from './ingestion/routes'
+import { systemClock, type Clock } from './platform/time'
+import type { Repositories } from './repositories/contracts'
+import { createKnexRepositories } from './repositories/knex'
+
+export interface CreateAppOptions {
+  /** Injectable persistence adapter; defaults to read-only Knex repositories. */
+  repositories?: Repositories
+  /** Injectable clock keeps health and timestamps deterministic in tests. */
+  clock?: Clock
+  identityResolver?: IdentityResolver
+  timeZone?: string
+}
 
 /**
- * Phase 1 API surface: health, catalog, cookie authentication, and the
- * admin-only Excel import. Dashboard/read routes belong to Phase 2.
+ * Integrated API surface: health, catalog, cookie authentication, the
+ * admin-only Excel import, and the student dashboard/module read routes.
  */
-export function createApp(): express.Express {
+export function createApp(options: CreateAppOptions = {}): express.Express {
   const app = express()
 
   app.disable('x-powered-by')
@@ -37,6 +51,15 @@ export function createApp(): express.Express {
 
   app.use('/api/v1/auth', createAuthRouter(loginRateLimiter))
   app.use('/api/v1/admin', createAdminImportRouter())
+  app.use(
+    '/api/v1/me',
+    createMeRouter({
+      repositories: options.repositories ?? createKnexRepositories(),
+      clock: options.clock ?? systemClock,
+      identityResolver: options.identityResolver ?? sessionIdentityResolver,
+      timeZone: options.timeZone,
+    }),
+  )
 
   app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'not_found', path: req.path })
