@@ -19,9 +19,29 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/recharts') ||
+            id.includes('node_modules/victory-vendor') ||
+            id.includes('node_modules/d3-')
+          ) {
+            return 'charts'
+          }
+          if (id.includes('node_modules/react-router')) {
+            return 'router'
+          }
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    testTimeout: 20000,
+    hookTimeout: 30000,
   },
 })
