@@ -1,10 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { AuthProvider } from './auth/AuthContext'
+import { MOCKS_ENABLED } from './lib/demo'
 import './index.css'
 
 async function enableMocking(): Promise<void> {
-  if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_MOCKS !== 'true') return
+  if (!MOCKS_ENABLED) return
   const { worker } = await import('./mocks/browser')
   await worker.start({ onUnhandledRequest: 'bypass' })
 }
@@ -12,7 +15,11 @@ async function enableMocking(): Promise<void> {
 void enableMocking().then(() => {
   createRoot(document.getElementById('root') as HTMLElement).render(
     <StrictMode>
-      <App />
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
     </StrictMode>,
   )
 })
