@@ -9,7 +9,7 @@ describe('GET /api/v1/healthz', () => {
   it('reports Phase 0 liveness', async () => {
     const response = await request(app).get('/api/v1/healthz')
     expect(response.status).toBe(200)
-    expect(response.body).toMatchObject({ status: 'ok', phase: 0 })
+    expect(response.body).toMatchObject({ status: 'ok', phase: 1 })
   })
 })
 

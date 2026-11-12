@@ -62,6 +62,12 @@ type ModuleSeed = {
   catalogOrder: number
   minutesPerProgressPoint: number
   prerequisiteModuleSlugs?: string[]
+  /**
+   * Additional source labels that map to this module. The Excel export uses
+   * full names (e.g. "Introduction to Computer Programming") while the catalog
+   * uses short names; aliases keep module identity name-based, never positional.
+   */
+  aliases?: string[]
   skills: Skill[]
 }
 
@@ -72,7 +78,7 @@ function defineModule(seed: ModuleSeed): CatalogModule {
     normalizedName: normalizeModuleName(seed.name),
     track: seed.track,
     catalogOrder: seed.catalogOrder,
-    aliases: [],
+    aliases: seed.aliases ?? [],
     prerequisiteModuleSlugs: seed.prerequisiteModuleSlugs ?? [],
     minutesPerProgressPoint: seed.minutesPerProgressPoint,
     skills: seed.skills,
@@ -88,6 +94,7 @@ export const MODULES: readonly CatalogModule[] = CatalogModuleSchema.array()
       track: 'foundations',
       catalogOrder: 1,
       minutesPerProgressPoint: 4,
+      aliases: ['Introduction to Computer Programming'],
       skills: [
         skill('Programming fundamentals', 'critical', 0.5, [
           activity('Concept review', 'reading', 20),
@@ -207,6 +214,7 @@ export const MODULES: readonly CatalogModule[] = CatalogModuleSchema.array()
       track: 'ai-ml',
       catalogOrder: 7,
       minutesPerProgressPoint: 8,
+      aliases: ['Introduction to Deep Learning'],
       prerequisiteModuleSlugs: ['advanced-machine-learning'],
       skills: [
         skill('Neural network basics', 'critical', 0.4, [
@@ -227,6 +235,7 @@ export const MODULES: readonly CatalogModule[] = CatalogModuleSchema.array()
       track: 'ai-ml',
       catalogOrder: 8,
       minutesPerProgressPoint: 9,
+      aliases: ['Deep Learning for Computer Vision'],
       prerequisiteModuleSlugs: ['intro-to-deep-learning'],
       skills: [
         skill('CNN architectures', 'critical', 0.4, [
@@ -247,6 +256,7 @@ export const MODULES: readonly CatalogModule[] = CatalogModuleSchema.array()
       track: 'ai-ml',
       catalogOrder: 9,
       minutesPerProgressPoint: 9,
+      aliases: ['Deep Learning for NLP'],
       prerequisiteModuleSlugs: ['intro-to-deep-learning'],
       skills: [
         skill('Text representation', 'critical', 0.4, [
@@ -267,6 +277,7 @@ export const MODULES: readonly CatalogModule[] = CatalogModuleSchema.array()
       track: 'ai-ml',
       catalogOrder: 10,
       minutesPerProgressPoint: 10,
+      aliases: ['Distributed Machine Learning'],
       prerequisiteModuleSlugs: ['intro-to-deep-learning'],
       skills: [
         skill('Data parallelism', 'critical', 0.4, [
@@ -287,6 +298,7 @@ export const MODULES: readonly CatalogModule[] = CatalogModuleSchema.array()
       track: 'ai-ml',
       catalogOrder: 11,
       minutesPerProgressPoint: 8,
+      aliases: ['Machine Learning & Generative AI with Microsoft Azure'],
       prerequisiteModuleSlugs: ['advanced-machine-learning'],
       skills: [
         skill('Azure ML workspace', 'critical', 0.4, [

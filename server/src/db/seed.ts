@@ -1,52 +1,6 @@
-import {
-  MODULES,
-  MOCK_ENROLLMENTS,
-  MOCK_MODULE_PROGRESS,
-  MOCK_STUDENTS,
-  type CatalogModule,
-} from '@spd/shared'
+import { MODULES, MOCK_ENROLLMENTS, MOCK_MODULE_PROGRESS, MOCK_STUDENTS } from '@spd/shared'
 import { db } from './client'
-
-async function seedCatalog(): Promise<Map<string, number>> {
-  for (const entry of MODULES) {
-    await db('modules')
-      .insert({
-        slug: entry.slug,
-        name: entry.name,
-        normalized_name: entry.normalizedName,
-        track: entry.track,
-        catalog_order: entry.catalogOrder,
-      })
-      .onConflict('slug')
-      .merge(['name', 'normalized_name', 'track', 'catalog_order'])
-  }
-
-  const rows = await db('modules').select<{ id: number; slug: string }[]>('id', 'slug')
-  const idBySlug = new Map(rows.map((row) => [row.slug, row.id]))
-
-  for (const entry of MODULES as readonly CatalogModule[]) {
-    const moduleId = idBySlug.get(entry.slug)
-    if (!moduleId) throw new Error(`Seeded module missing after insert: ${entry.slug}`)
-
-    for (const skill of entry.skills) {
-      await db('skills')
-        .insert({
-          module_id: moduleId,
-          name: skill.name,
-          importance: skill.importance,
-          weight: skill.weight,
-          // Skill-level prerequisites are resolved in Phase 4. Module-level
-          // prerequisites live in the catalog constant.
-          prereq_skill_ids: JSON.stringify([]),
-          activity_templates: JSON.stringify(skill.activityTemplates),
-        })
-        .onConflict(['module_id', 'name'])
-        .merge(['importance', 'weight', 'prereq_skill_ids', 'activity_templates'])
-    }
-  }
-
-  return idBySlug
-}
+import { seedCatalog } from './seed-catalog'
 
 async function seedMockStudents(): Promise<Map<number, number>> {
   for (const student of MOCK_STUDENTS) {
@@ -149,7 +103,7 @@ async function main(): Promise<void> {
     `[db] Seeded ${MODULES.length} modules, ${MOCK_STUDENTS.length} fictional students, ` +
       `${MOCK_ENROLLMENTS.length} enrollments, ${MOCK_MODULE_PROGRESS.length} module progress rows`,
   )
-  console.log('[db] No credentials were created in Phase 0; account provisioning is Phase 1.')
+  console.log('[db] Seeded fixtures have no passwords; Excel import provisions accounts.')
 }
 
 void main()

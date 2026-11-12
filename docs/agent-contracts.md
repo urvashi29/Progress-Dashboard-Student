@@ -182,3 +182,4 @@ Client note: Vite resolves `@spd/shared` to `shared/src/index.ts` so UI builds d
 ## 9. Changelog
 
 - Phase 0 (foundation): initial workspaces, contracts, catalog, SQLite schema, fixtures, MSW, docs.
+- Phase 1 (ingestion-auth): added additive source-name aliases to 6 catalog modules (real spreadsheet labels); proposed making `EnrollmentSchema.overallProgressPct` nullable because the source workbook omits it on 8 rows (store NULL, never 0). Affects api-health and UI; contract itself unchanged pending review.
