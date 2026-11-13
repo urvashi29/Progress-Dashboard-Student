@@ -26,6 +26,13 @@ export function asyncHandler(
  * Central error translation. Never echo raw request bodies or database errors:
  * they can contain student PII or password material.
  */
+function isZodError(error: unknown): error is ZodError {
+  if (error instanceof ZodError) return true
+  if (typeof error !== 'object' || error === null) return false
+  const candidate = error as { name?: unknown; issues?: unknown }
+  return candidate.name === 'ZodError' && Array.isArray(candidate.issues)
+}
+
 export function apiErrorHandler(
   error: unknown,
   _req: Request,
@@ -49,7 +56,7 @@ export function apiErrorHandler(
     return
   }
 
-  if (error instanceof ZodError) {
+  if (isZodError(error)) {
     res.status(400).json({
       error: 'validation_error',
       details: error.issues.map((issue) => ({

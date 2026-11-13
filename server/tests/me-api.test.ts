@@ -28,6 +28,7 @@ function testApp(options: {
     clock: { now: () => NOW },
     identityResolver: () => options.studentId ?? null,
     timeZone: options.timeZone ?? 'Asia/Kolkata',
+    coach: { llm: null },
   }
   return createApp(appOptions)
 }
@@ -129,8 +130,9 @@ describe('GET /api/v1/me/coach', () => {
 
     expect(response.status).toBe(200)
     const coach = CoachSummarySchema.parse(response.body)
-    expect(coach.headline).toMatch(/not available yet/i)
-    expect(coach.recommendations).toEqual([])
+    expect(coach.recommendations).toHaveLength(3)
+    expect(coach.generatedBy).toBe('fallback')
+    expect(coach.assessmentData.available).toBe(false)
 
     const dashboard = DashboardResponseSchema.parse(
       (await request(app).get('/api/v1/me/dashboard')).body,

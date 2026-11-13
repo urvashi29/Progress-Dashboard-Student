@@ -11,20 +11,16 @@ import {
   type StudentProfile,
   type TrackRollup,
 } from '@spd/shared'
+import { COACH_DISCLAIMER, UNAVAILABLE_ASSESSMENT_DATA } from '../coach/constants'
+import {
+  buildDeterministicRecommendations,
+  buildFallbackHeadline,
+} from '../coach/recommendations'
 import { isIsoDate, toIsoDate, todayUtcDate } from '../platform/time'
 import { computeHealthAssessment } from './health'
 
 export const PROGRESS_COMPARISON_NOTE =
   'Overall progress is the platform-reported value. Module averages and track rollups are unweighted derived values shown for reference only; they are not the overall progress.'
-
-/**
- * Contract-compatible placeholder. Phase 4 owns recommendations, so this
- * response deliberately contains no invented AI advice.
- */
-export const PLACEHOLDER_COACH_SUMMARY: CoachSummary = {
-  headline: 'Personalized coach recommendations are not available yet.',
-  recommendations: [],
-}
 
 export interface DashboardInput {
   student: StudentProfile
@@ -32,6 +28,25 @@ export interface DashboardInput {
   moduleProgress: readonly ModuleProgressRecord[]
   now: Date
   timeZone?: string
+}
+
+/**
+ * Dashboard preview summary. It uses the same deterministic engine as the AI
+ * Coach endpoint but never calls Gemini, so the dashboard stays fast and
+ * available even when the LLM is not configured.
+ */
+export function buildDeterministicCoachSummary(
+  input: Pick<DashboardInput, 'enrollment' | 'moduleProgress' | 'now'>,
+): CoachSummary {
+  const recommendations = buildDeterministicRecommendations(input)
+  return {
+    headline: buildFallbackHeadline(recommendations),
+    recommendations,
+    generatedBy: 'fallback',
+    assessmentData: UNAVAILABLE_ASSESSMENT_DATA,
+    disclaimer: COACH_DISCLAIMER,
+    generatedAt: input.now.toISOString(),
+  }
 }
 
 function clampPercent(value: number): number {
@@ -132,7 +147,7 @@ export function buildDashboard(input: DashboardInput): DashboardResponse {
     health,
     tracks,
     modules,
-    coachSummary: PLACEHOLDER_COACH_SUMMARY,
+    coachSummary: buildDeterministicCoachSummary(input),
     progressComparison: {
       moduleAveragePct,
       differenceFromOverallPct:

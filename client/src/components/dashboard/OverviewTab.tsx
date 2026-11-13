@@ -301,28 +301,25 @@ export function OverviewTab({
           <section className="coach-preview" aria-labelledby="next-step-heading">
             <div className="panel__header">
               <div>
-                <p className="eyebrow">AI Coach preview</p>
+                <p className="eyebrow">AI Coach</p>
                 <h2 id="next-step-heading">Your Next Learning Step</h2>
               </div>
-              <StatusBadge label="Preview only" tone="warning" />
+              <StatusBadge label="Progress-based" tone="info" />
             </div>
             {nextStep ? (
               <>
                 <p>
                   <strong>{nextStep.title}</strong>
                 </p>
-                <p className="coach-preview__reason">{nextStep.reason}</p>
+                <p className="coach-preview__reason">{nextStep.explanation}</p>
                 <div className="coach-preview__meta">
-                  {nextStep.estimatedMinutes ? (
-                    <span>~{nextStep.estimatedMinutes} min</span>
-                  ) : null}
-                  <span>Recommendations use demo data, not live AI output.</span>
+                  <span>{formatPercent(nextStep.progressPct)} module progress</span>
+                  <span>Selected from your actual completion data.</span>
                 </div>
               </>
             ) : (
               <p className="coach-preview__reason">
-                A personalized recommendation is not available yet. The coach preview explains what
-                will appear when the service is connected.
+                No incomplete module recommendations are available for your current plan yet.
               </p>
             )}
             <div className="coach-preview__actions">

@@ -34,8 +34,11 @@ export const MODULE_BAND_TONE: Record<ModuleProgressBand, Tone> = {
 
 export const RECOMMENDATION_LABEL: Record<RecommendationType, string> = {
   START_MODULE: 'Start module',
-  RESCUE_MODULE: 'Rescue module',
+  CONTINUE_MODULE: 'Continue module',
   NEAR_FINISH: 'Near finish',
+  COMPLETE_PREREQUISITE: 'Complete prerequisite',
+  EXPLORE_NEXT: 'Explore next module',
+  RESCUE_MODULE: 'Rescue module',
   QUICK_WIN: 'Quick win',
   UNBLOCK: 'Unblock',
   MOMENTUM: 'Momentum',

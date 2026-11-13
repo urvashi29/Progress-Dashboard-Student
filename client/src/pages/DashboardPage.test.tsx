@@ -70,8 +70,8 @@ describe('dashboard', () => {
     ])
 
     const coachPreview = screen.getByRole('region', { name: 'Your Next Learning Step' })
-    expect(within(coachPreview).getByText('Rescue Relational Databases')).toBeInTheDocument()
-    expect(within(coachPreview).getByText('Preview only')).toBeInTheDocument()
+    expect(within(coachPreview).getByText('Finish Numerical Programming in Python')).toBeInTheDocument()
+    expect(within(coachPreview).getByText('Progress-based')).toBeInTheDocument()
     expect(within(coachPreview).getByRole('button', { name: /explore with ai coach/i })).toBeInTheDocument()
   })
 
@@ -151,7 +151,11 @@ describe('dashboard', () => {
       http.get('*/api/v1/me/dashboard', () =>
         HttpResponse.json({
           ...MOCK_DASHBOARD,
-          coachSummary: { headline: 'No recommendations yet', recommendations: [] },
+          coachSummary: {
+            ...MOCK_DASHBOARD.coachSummary,
+            headline: 'No module recommendations yet',
+            recommendations: [],
+          },
         }),
       ),
     )
@@ -159,7 +163,7 @@ describe('dashboard', () => {
     await renderDashboard()
 
     expect(
-      screen.getByText(/a personalized recommendation is not available yet/i),
+      screen.getByText(/no incomplete module recommendations are available/i),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /explore with ai coach/i })).toBeInTheDocument()
   })

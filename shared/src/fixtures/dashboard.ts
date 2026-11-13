@@ -19,31 +19,88 @@ function average(values: number[]): number | null {
   return round1(values.reduce((total, value) => total + value, 0) / values.length)
 }
 
+const MOCK_ASSESSMENT_DATA: CoachSummary['assessmentData'] = {
+  available: false,
+  quizzes: 'unavailable',
+  codingQuestions: 'unavailable',
+  midCourseAssessments: 'unavailable',
+  endCourseAssessments: 'unavailable',
+  note: 'Individual quiz, coding-question and assessment results are not available through this dashboard.',
+}
+
 const MOCK_COACH_SUMMARY: CoachSummary = {
-  headline: 'Focus on Relational Databases and Data Visualization Tools this week.',
+  headline: 'Finish Numerical Programming in Python, then continue Relational Databases.',
   recommendations: [
     {
-      id: 'rec-relational-databases-rescue',
-      type: 'RESCUE_MODULE',
-      moduleSlug: 'relational-databases',
-      title: 'Rescue Relational Databases',
+      id: 'rec-numerical-programming-near-finish',
+      type: 'NEAR_FINISH',
+      moduleSlug: 'numerical-programming-in-python',
+      moduleName: 'Numerical Programming in Python',
+      track: 'foundations',
+      title: 'Finish Numerical Programming in Python',
       reason:
-        'Progress is 35% while the cohort is past halfway; SQL joins unlock several later modules.',
+        'This module is 80% complete, so finishing the remaining content is the fastest route to completing it.',
+      explanation:
+        'You are 80% through Numerical Programming in Python. Finish the remaining module content to complete it, and review the key concepts before moving on.',
       priority: 1,
-      estimatedMinutes: 180,
-      expectedGainPct: 20,
+      progressPct: 80,
+      inPlan: true,
+      action: 'CONTINUE_MODULE',
+      skills: [
+        { id: 'python-programming', name: 'Python programming', importance: 'critical' },
+        { id: 'numerical-methods', name: 'Numerical methods', importance: 'core' },
+      ],
+      estimatedMinutes: null,
+      expectedGainPct: null,
     },
     {
-      id: 'rec-data-visualization-quick-win',
-      type: 'QUICK_WIN',
-      moduleSlug: 'data-visualization-tools',
-      title: 'Quick win: Data Visualization Tools',
-      reason: 'High catalog weight for a modest time investment before the next deadline.',
+      id: 'rec-relational-databases-continue',
+      type: 'CONTINUE_MODULE',
+      moduleSlug: 'relational-databases',
+      moduleName: 'Relational Databases',
+      track: 'foundations',
+      title: 'Continue Relational Databases',
+      reason:
+        'This module is 35% complete and is a prerequisite for later modules in your plan.',
+      explanation:
+        'Continue the remaining Relational Databases content. It is a prerequisite for Advanced Machine Learning, so completing it also unblocks later work.',
       priority: 2,
-      estimatedMinutes: 90,
-      expectedGainPct: 15,
+      progressPct: 35,
+      inPlan: true,
+      action: 'CONTINUE_MODULE',
+      skills: [
+        { id: 'sql-joins', name: 'SQL joins', importance: 'critical' },
+        { id: 'schema-design', name: 'Schema design and normalization', importance: 'core' },
+      ],
+      estimatedMinutes: null,
+      expectedGainPct: null,
+    },
+    {
+      id: 'rec-data-visualization-continue',
+      type: 'CONTINUE_MODULE',
+      moduleSlug: 'data-visualization-tools',
+      moduleName: 'Data Visualization Tools',
+      track: 'data-analytics',
+      title: 'Continue Data Visualization Tools',
+      reason: 'This module is 40% complete and is part of your current plan.',
+      explanation:
+        'Continue the remaining Data Visualization Tools content. The associated skills are best developed by finishing the existing module and using its practice activities for revision.',
+      priority: 3,
+      progressPct: 40,
+      inPlan: true,
+      action: 'CONTINUE_MODULE',
+      skills: [
+        { id: 'chart-selection', name: 'Chart selection', importance: 'critical' },
+      ],
+      estimatedMinutes: null,
+      expectedGainPct: null,
     },
   ],
+  generatedBy: 'fallback',
+  assessmentData: MOCK_ASSESSMENT_DATA,
+  disclaimer:
+    'Recommendations use actual module completion data and curriculum mappings. Individual quiz, coding-question and assessment status is unavailable, so no results are claimed.',
+  generatedAt: '2026-02-04T09:00:00+05:30',
 }
 
 function buildMockDashboard(): DashboardResponse {

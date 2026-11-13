@@ -1859,3 +1859,126 @@ button.career-card:hover {
     padding: 22px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* AI Coach drawer                                                     */
+/* ------------------------------------------------------------------ */
+
+.coach-note {
+  border-color: var(--color-primary-soft);
+  background: linear-gradient(150deg, #fff1f5 0%, #ffffff 78%);
+}
+
+.coach-headline {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.coach-rec-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.coach-rec {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-primary-soft);
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, #fff7f9 0%, #ffffff 70%);
+}
+
+.coach-rec__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.coach-rec h4 {
+  margin-top: 5px;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.coach-rec__explanation {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.coach-rec__progress {
+  display: grid;
+  gap: 4px;
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+}
+
+.coach-rec__skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.coach-rec__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.coach-guide {
+  display: grid;
+  gap: 6px;
+}
+
+.coach-guide__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.coach-ask {
+  display: grid;
+  gap: 6px;
+}
+
+.coach-ask label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.coach-ask__row {
+  display: flex;
+  gap: 6px;
+}
+
+.coach-ask__row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 0.84rem;
+}
+
+.coach-ask__row input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(255, 0, 70, 0.14);
+}
+
+.coach-answer {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-primary-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-subtle);
+  font-size: 0.82rem;
+}

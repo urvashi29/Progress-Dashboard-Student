@@ -110,7 +110,7 @@ describe('modules explorer', () => {
 
     const coachDialog = await screen.findByRole('dialog', { name: 'AI Coach' })
     expect(await within(coachDialog).findByText('Context: Relational Databases')).toBeInTheDocument()
-    expect(within(coachDialog).getByText('Rescue Relational Databases')).toBeInTheDocument()
+    expect(within(coachDialog).getByText('Continue Relational Databases')).toBeInTheDocument()
   })
 
   it('distinguishes a not-in-plan module from an assigned module at 0%', async () => {

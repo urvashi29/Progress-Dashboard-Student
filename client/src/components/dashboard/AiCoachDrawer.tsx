@@ -4,14 +4,17 @@ import {
   findSkillByName,
   getModuleBySlug,
   getSkillById,
-  type Recommendation,
+  type CoachRecommendation,
+  type CoachSummary,
 } from '@spd/shared'
-import { useCoach } from '../../hooks/useCoach'
+import { useState, type FormEvent } from 'react'
+import { useAskCoach, useCoach, useModuleGuide } from '../../hooks/useCoach'
 import { formatPercent } from '../../lib/format'
 import { RECOMMENDATION_LABEL, SKILL_IMPORTANCE_LABEL } from '../../lib/status'
 import { Spinner } from '../feedback/AsyncState'
 import { Button } from '../ui/Button'
 import { Drawer } from '../ui/Drawer'
+import { ProgressBar } from '../ui/ProgressBar'
 import { StatusBadge } from '../ui/StatusBadge'
 
 export type CoachContext = {
@@ -28,10 +31,22 @@ type AiCoachDrawerProps = {
   onOpenModule: (slug: string) => void
 }
 
-function pickRecommendation(
-  recommendations: Recommendation[],
+function orderRecommendations(
+  recommendations: CoachRecommendation[],
   context: CoachContext,
-): Recommendation | null {
+): CoachRecommendation[] {
+  if (!context.moduleSlug) return recommendations
+  const index = recommendations.findIndex((entry) => entry.moduleSlug === context.moduleSlug)
+  if (index <= 0) return recommendations
+  const copy = recommendations.slice()
+  const [match] = copy.splice(index, 1)
+  return match ? [match, ...copy] : recommendations
+}
+
+function focusRecommendation(
+  recommendations: CoachRecommendation[],
+  context: CoachContext,
+): CoachRecommendation | null {
   if (context.moduleSlug) {
     const match = recommendations.find((entry) => entry.moduleSlug === context.moduleSlug)
     if (match) return match
@@ -39,10 +54,100 @@ function pickRecommendation(
   return recommendations[0] ?? null
 }
 
+function actionLabel(recommendation: CoachRecommendation): string {
+  return recommendation.action === 'CONTINUE_MODULE' ? 'Continue Module' : 'View Module'
+}
+
+function GeneratedByBadge({ generatedBy }: { generatedBy: CoachSummary['generatedBy'] }) {
+  return (
+    <StatusBadge
+      label={generatedBy === 'gemini' ? 'Gemini explanation' : 'Deterministic fallback'}
+      tone={generatedBy === 'gemini' ? 'info' : 'neutral'}
+    />
+  )
+}
+
+function RecommendationCard({
+  recommendation,
+  onOpenModule,
+  onGuide,
+}: {
+  recommendation: CoachRecommendation
+  onOpenModule: (slug: string) => void
+  onGuide: (slug: string) => void
+}) {
+  return (
+    <article className="coach-rec" aria-label={recommendation.moduleName}>
+      <div className="coach-rec__top">
+        <div>
+          <StatusBadge
+            label={RECOMMENDATION_LABEL[recommendation.type]}
+            tone="info"
+          />
+          <h4>{recommendation.title}</h4>
+        </div>
+      </div>
+
+      <p className="coach-rec__explanation">{recommendation.explanation}</p>
+
+      <div className="coach-rec__progress">
+        <span>
+          Module progress <strong>{formatPercent(recommendation.progressPct)}</strong>
+        </span>
+        <ProgressBar
+          value={recommendation.progressPct}
+          label={`${recommendation.moduleName} progress`}
+          tone="info"
+          size="sm"
+        />
+      </div>
+
+      {recommendation.skills.length > 0 ? (
+        <div className="coach-rec__skills" aria-label={`${recommendation.moduleName} skills`}>
+          {recommendation.skills.map((skill) => (
+            <span
+              className="skill-chip"
+              key={skill.id}
+              title={SKILL_IMPORTANCE_LABEL[skill.importance]}
+            >
+              {skill.name}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="coach-rec__actions">
+        <Button
+          variant="secondary"
+          className="btn--sm"
+          onClick={() => onOpenModule(recommendation.moduleSlug)}
+        >
+          {actionLabel(recommendation)}
+        </Button>
+        <Button
+          variant="ghost"
+          className="btn--sm"
+          onClick={() => onGuide(recommendation.moduleSlug)}
+        >
+          How to Complete This Module
+        </Button>
+      </div>
+    </article>
+  )
+}
+
 export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerProps) {
   const { state, reload } = useCoach()
-  const recommendation = state.status === 'success' ? pickRecommendation(state.data.recommendations, context) : null
-  const recommendationModule = recommendation ? getModuleBySlug(recommendation.moduleSlug) : undefined
+  const guide = useModuleGuide()
+  const ask = useAskCoach()
+  const [guideSlug, setGuideSlug] = useState<string | null>(null)
+  const [question, setQuestion] = useState('')
+
+  const recommendations =
+    state.status === 'success'
+      ? orderRecommendations(state.data.recommendations, context)
+      : []
+  const focus = focusRecommendation(recommendations, context)
   const contextModule = context.moduleSlug ? getModuleBySlug(context.moduleSlug) : undefined
   const contextSkill = context.skillName ? findSkillByName(context.skillName) : undefined
   const contextCareer = context.careerTitle
@@ -52,24 +157,31 @@ export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerP
     contextCareer?.moduleSlugs
       .map((slug) => getModuleBySlug(slug))
       .filter((module): module is NonNullable<typeof module> => module !== undefined) ?? []
-  const focusModule = recommendationModule ?? contextModule
-  const activities =
-    contextSkill?.practiceActivities.slice(0, 4) ??
-    (contextCareer
-      ? careerModules.flatMap((module) =>
-          module.skills.flatMap((skill) => skill.activityTemplates),
-        ).slice(0, 4)
-      : undefined) ??
-    focusModule?.skills.flatMap((skill) => skill.activityTemplates).slice(0, 4) ??
-    []
-  const skills = contextSkill
+  const skillModules =
+    contextSkill?.moduleAssociations
+      .map((association) => getModuleBySlug(association.moduleSlug))
+      .filter((module): module is NonNullable<typeof module> => module !== undefined) ?? []
+  const relatedModules = contextSkill ? skillModules : careerModules
+  const contextSkills = contextSkill
     ? [{ id: contextSkill.id, name: contextSkill.name, importance: contextSkill.importance }]
     : contextCareer
       ? contextCareer.requiredSkillIds
           .map((skillId) => getSkillById(skillId))
           .filter((skill): skill is NonNullable<typeof skill> => skill !== undefined)
           .slice(0, 4)
-      : (focusModule?.skills.slice(0, 4) ?? [])
+      : []
+
+  function loadGuide(slug: string) {
+    setGuideSlug(slug)
+    guide.load(slug)
+  }
+
+  function handleAsk(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const trimmed = question.trim()
+    if (!trimmed) return
+    ask.ask(trimmed, focus?.moduleSlug ?? context.moduleSlug)
+  }
 
   return (
     <Drawer
@@ -77,15 +189,18 @@ export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerP
       eyebrow="Your learning coach"
       onClose={onClose}
       headerExtra={
-        <p style={{ marginTop: 6 }}>
-          <StatusBadge label="Preview only" tone="warning" />
-        </p>
+        state.status === 'success' ? (
+          <p style={{ marginTop: 6 }}>
+            <GeneratedByBadge generatedBy={state.data.generatedBy} />
+          </p>
+        ) : null
       }
     >
-      <div className="drawer__section" role="note">
+      <div className="drawer__section coach-note" role="note">
         <p>
-          This is a clearly labeled preview. Recommendations use demo data and catalog activity
-          templates; live personalized AI coaching is not connected yet.
+          Recommendations use your actual module completion percentages and the approved
+          curriculum mapping. Gemini explains the recommendations; it does not choose them or
+          inspect quiz, coding-question or assessment results.
         </p>
       </div>
 
@@ -113,42 +228,72 @@ export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerP
       ) : (
         <>
           <section className="drawer__section" aria-labelledby="coach-action-heading">
-            <h3 id="coach-action-heading">Recommended next action</h3>
-            {recommendation ? (
-              <>
-                <p>
-                  <strong>{recommendation.title}</strong>
-                </p>
-                <p className="muted">{recommendation.reason}</p>
-                <div className="coach-preview__meta">
-                  <StatusBadge
-                    label={RECOMMENDATION_LABEL[recommendation.type]}
-                    tone="info"
-                  />
-                  {recommendation.estimatedMinutes ? (
-                    <span>Estimated time: ~{recommendation.estimatedMinutes} min</span>
-                  ) : null}
-                  {recommendation.expectedGainPct !== null ? (
-                    <span>Expected gain: {formatPercent(recommendation.expectedGainPct)}</span>
-                  ) : null}
-                </div>
-              </>
-            ) : (
+            <h3 id="coach-action-heading">Recommended next modules</h3>
+            <p className="coach-headline">{state.data.headline}</p>
+            {recommendations.length === 0 ? (
               <p className="muted">
-                No personalized recommendation is available for this context yet. The preview
-                below shows catalog information only.
+                No incomplete module recommendations are available for your current plan.
               </p>
+            ) : (
+              <div className="coach-rec-list">
+                {recommendations.map((recommendation) => (
+                  <RecommendationCard
+                    key={recommendation.id}
+                    recommendation={recommendation}
+                    onOpenModule={(slug) => {
+                      onOpenModule(slug)
+                      onClose()
+                    }}
+                    onGuide={loadGuide}
+                  />
+                ))}
+              </div>
             )}
           </section>
 
-          <section className="drawer__section" aria-labelledby="coach-why-heading">
-            <h3 id="coach-why-heading">Why this is relevant</h3>
-            <p>
-              {recommendation
-                ? recommendation.reason
-                : 'A live recommendation service will explain relevance using your module progress once it is connected.'}
-            </p>
-          </section>
+          {recommendations.length > 0 ? (
+            <section className="drawer__section" aria-labelledby="coach-guide-heading">
+              <h3 id="coach-guide-heading">How to Complete This Module</h3>
+              {guideSlug === null ? (
+                <p className="muted">
+                  Select “How to Complete This Module” on a recommendation to get short guidance
+                  based on verified module information.
+                </p>
+              ) : guide.state.status === 'loading' ? (
+                <div className="drawer__state" role="status" aria-live="polite">
+                  <Spinner />
+                  <p>Loading module guidance...</p>
+                </div>
+              ) : guide.state.status === 'error' ? (
+                <div className="drawer__state" role="alert">
+                  <h3>We could not load guidance</h3>
+                  <p className="muted">{guide.state.error.message}</p>
+                  <Button variant="secondary" onClick={() => guide.load(guideSlug)}>
+                    Try again
+                  </Button>
+                </div>
+              ) : guide.state.status === 'success' ? (
+                <div className="coach-guide">
+                  <div className="coach-guide__meta">
+                    <strong>{guide.state.data.moduleName}</strong>
+                    <StatusBadge
+                      label={
+                        guide.state.data.generatedBy === 'gemini'
+                          ? 'Gemini guidance'
+                          : 'Deterministic fallback'
+                      }
+                      tone={guide.state.data.generatedBy === 'gemini' ? 'info' : 'neutral'}
+                    />
+                  </div>
+                  <ul className="drawer__list">
+                    {guide.state.data.guidance.map((entry) => (
+                      <li key={entry}>{entry}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           {context.type === 'career' ? (
             <section className="drawer__section" aria-labelledby="coach-career-heading">
@@ -171,56 +316,96 @@ export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerP
             </section>
           ) : null}
 
-          <section className="drawer__section" aria-labelledby="coach-skills-heading">
-            <h3 id="coach-skills-heading">Skills involved</h3>
-            {skills.length === 0 ? (
-              <p className="muted">No catalog skills are mapped to this context.</p>
-            ) : (
+          {contextSkills.length > 0 ? (
+            <section className="drawer__section" aria-labelledby="coach-skills-heading">
+              <h3 id="coach-skills-heading">Skills involved</h3>
               <ul className="drawer__list">
-                {skills.map((skill) => (
+                {contextSkills.map((skill) => (
                   <li key={skill.id}>
                     {skill.name} · {SKILL_IMPORTANCE_LABEL[skill.importance]} · estimated
                   </li>
                 ))}
               </ul>
-            )}
-          </section>
+            </section>
+          ) : null}
 
-          <section className="drawer__section" aria-labelledby="coach-activities-heading">
-            <h3 id="coach-activities-heading">Suggested learning activities</h3>
-            {activities.length === 0 ? (
-              <p className="muted">No catalog activities are available for this context yet.</p>
-            ) : (
-              <ul className="drawer__list">
-                {activities.map((activity) => (
-                  <li key={`${activity.type}-${activity.title}`}>
-                    {activity.title} · {activity.type} · {activity.minutes} min
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="drawer__section" aria-labelledby="coach-modules-heading">
-            <h3 id="coach-modules-heading">Related modules</h3>
-            {contextSkill ? (
+          {contextModule &&
+          !recommendations.some((entry) => entry.moduleSlug === contextModule.slug) ? (
+            <section className="drawer__section" aria-labelledby="coach-context-module-heading">
+              <h3 id="coach-context-module-heading">Selected module</h3>
+              <p>
+                <strong>{contextModule.name}</strong> is not in the current three recommendations.
+              </p>
               <div className="drawer__actions">
-                {contextSkill.moduleAssociations.map((association) => (
-                  <Button
-                    key={association.moduleSlug}
-                    variant="secondary"
-                    onClick={() => {
-                      onOpenModule(association.moduleSlug)
-                      onClose()
-                    }}
-                  >
-                    Open {association.moduleName}
-                  </Button>
-                ))}
+                <Button variant="ghost" onClick={() => loadGuide(contextModule.slug)}>
+                  How to Complete This Module
+                </Button>
               </div>
-            ) : contextCareer ? (
+            </section>
+          ) : null}
+
+          <section className="drawer__section" aria-labelledby="coach-ask-heading">
+            <h3 id="coach-ask-heading">Ask AI Coach</h3>
+            <form className="coach-ask" onSubmit={handleAsk}>
+              <label htmlFor="coach-question">
+                Ask about your next step{focus ? ` for ${focus.moduleName}` : ''}
+              </label>
+              <div className="coach-ask__row">
+                <input
+                  id="coach-question"
+                  type="text"
+                  maxLength={500}
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  placeholder="What should I focus on next?"
+                />
+                <Button
+                  type="submit"
+                  className="btn--sm"
+                  disabled={!question.trim() || ask.state.status === 'loading'}
+                >
+                  Ask
+                </Button>
+              </div>
+            </form>
+            {ask.state.status === 'loading' ? (
+              <div className="drawer__state" role="status" aria-live="polite">
+                <Spinner />
+                <p>Asking the coach...</p>
+              </div>
+            ) : ask.state.status === 'error' ? (
+              <div className="drawer__state" role="alert">
+                <p className="muted">{ask.state.error.message}</p>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    ask.ask(question.trim(), focus?.moduleSlug ?? context.moduleSlug)
+                  }
+                >
+                  Try again
+                </Button>
+              </div>
+            ) : ask.state.status === 'success' ? (
+              <div className="coach-answer" role="status">
+                <p>{ask.state.data.answer}</p>
+                <GeneratedByBadge generatedBy={ask.state.data.generatedBy} />
+              </div>
+            ) : null}
+          </section>
+
+          <section className="drawer__section" aria-labelledby="coach-assessment-heading">
+            <h3 id="coach-assessment-heading">Assessments and activities</h3>
+            <p>{state.data.assessmentData.note}</p>
+            <p className="muted" style={{ fontSize: '0.74rem' }}>
+              {state.data.disclaimer}
+            </p>
+          </section>
+
+          {relatedModules.length > 0 ? (
+            <section className="drawer__section" aria-labelledby="coach-modules-heading">
+              <h3 id="coach-modules-heading">Related modules</h3>
               <div className="drawer__actions">
-                {careerModules.map((module) => (
+                {relatedModules.map((module) => (
                   <Button
                     key={module.slug}
                     variant="secondary"
@@ -233,22 +418,8 @@ export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerP
                   </Button>
                 ))}
               </div>
-            ) : focusModule ? (
-              <div className="drawer__actions">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    onOpenModule(focusModule.slug)
-                    onClose()
-                  }}
-                >
-                  Open {focusModule.name}
-                </Button>
-              </div>
-            ) : (
-              <p className="muted">Select a module to see related catalog modules.</p>
-            )}
-          </section>
+            </section>
+          ) : null}
 
           <p className="muted" style={{ fontSize: '0.74rem' }}>
             {CATALOG_NOTE}

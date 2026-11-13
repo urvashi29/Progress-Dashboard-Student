@@ -111,12 +111,16 @@ describe('dashboard assembly', () => {
     expect(dashboard.health.downgraded).toBe(true)
   })
 
-  it('provides an empty, non-invented coach placeholder', async () => {
+  it('provides deterministic, progress-based coach recommendations', async () => {
     const input = await loadStudentOne()
     const dashboard = buildDashboard({ ...input, now: NOW })
 
-    expect(dashboard.coachSummary.recommendations).toEqual([])
-    expect(dashboard.coachSummary.headline).toContain('not available yet')
+    expect(dashboard.coachSummary.recommendations).toHaveLength(3)
+    expect(dashboard.coachSummary.generatedBy).toBe('fallback')
+    expect(dashboard.coachSummary.recommendations[0]?.moduleSlug).toBe(
+      'numerical-programming-in-python',
+    )
+    expect(dashboard.coachSummary.assessmentData.available).toBe(false)
   })
 })
 

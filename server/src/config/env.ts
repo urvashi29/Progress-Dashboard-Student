@@ -40,6 +40,15 @@ const EnvSchema = z.object({
   IMPORT_MAX_FILE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   LOGIN_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+  // AI coach. The API key stays server-side and is never sent to the browser.
+  LLM_PROVIDER: z.enum(['gemini', 'disabled']).default('gemini'),
+  GEMINI_API_KEY: optionalString,
+  GEMINI_MODEL: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+  GEMINI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(12_000),
+  COACH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  COACH_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+  COACH_ASK_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  ASSESSMENT_DATA_ADAPTER: z.enum(['unavailable']).default('unavailable'),
 })
 
 const parsed = EnvSchema.safeParse(process.env)

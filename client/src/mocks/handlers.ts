@@ -93,6 +93,57 @@ export const handlers = [
     return HttpResponse.json(MOCK_DASHBOARD.coachSummary)
   }),
 
+  http.post(`${API}/me/coach/modules/:slug/guide`, ({ params }) => {
+    if (!hasMockSession()) return unauthorized()
+    const slug = typeof params.slug === 'string' ? params.slug : ''
+    const module = MOCK_DASHBOARD.modules.find((entry) => entry.moduleSlug === slug)
+    if (!module) {
+      return HttpResponse.json(
+        { error: 'module_not_found', message: 'Module not found.' },
+        { status: 404 },
+      )
+    }
+    return HttpResponse.json({
+      moduleSlug: module.moduleSlug,
+      moduleName: module.name,
+      progressPct: module.progressPct,
+      inPlan: module.inPlan,
+      guidance: [
+        `Continue the remaining module content in ${module.name} until it is complete.`,
+        'Review the relevant module concepts and practice the associated skills.',
+        "Use the module's existing quizzes for revision; individual quiz status is not available in this dashboard.",
+        'If the module includes coding questions, complete the existing ones; individual coding-question status is not available.',
+        "Attempt the platform's assessments according to their published eligibility requirements; individual assessment status is not available.",
+      ],
+      generatedBy: 'fallback',
+      assessmentData: MOCK_DASHBOARD.coachSummary.assessmentData,
+      disclaimer: MOCK_DASHBOARD.coachSummary.disclaimer,
+      generatedAt: MOCK_DASHBOARD.coachSummary.generatedAt,
+    })
+  }),
+
+  http.post(`${API}/me/coach/ask`, async ({ request }) => {
+    if (!hasMockSession()) return unauthorized()
+    const payload = asRecord(await request.json().catch(() => null))
+    const question = typeof payload?.question === 'string' ? payload.question.trim() : ''
+    if (!question) {
+      return HttpResponse.json(
+        { error: 'validation_error', message: 'A question is required.' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({
+      answer: 'Ask answer: continue the first recommended module.',
+      generatedBy: 'fallback',
+      contextModuleSlugs: MOCK_DASHBOARD.coachSummary.recommendations.map(
+        (entry) => entry.moduleSlug,
+      ),
+      assessmentData: MOCK_DASHBOARD.coachSummary.assessmentData,
+      disclaimer: MOCK_DASHBOARD.coachSummary.disclaimer,
+      generatedAt: MOCK_DASHBOARD.coachSummary.generatedAt,
+    })
+  }),
+
   http.get(`${API}/me/skills`, () => {
     if (!hasMockSession()) return unauthorized()
     return HttpResponse.json({

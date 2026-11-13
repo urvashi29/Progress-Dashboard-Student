@@ -9,7 +9,7 @@ import { env } from './config/env'
 import { db } from './db/client'
 import { apiErrorHandler } from './http/errors'
 import { sessionIdentityResolver, type IdentityResolver } from './http/identity'
-import { createMeRouter } from './http/me-routes'
+import { createMeRouter, type CoachDependencies } from './http/me-routes'
 import { createAdminImportRouter } from './ingestion/routes'
 import { systemClock, type Clock } from './platform/time'
 import type { Repositories } from './repositories/contracts'
@@ -22,6 +22,7 @@ export interface CreateAppOptions {
   clock?: Clock
   identityResolver?: IdentityResolver
   timeZone?: string
+  coach?: CoachDependencies
 }
 
 /**
@@ -58,6 +59,7 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
       clock: options.clock ?? systemClock,
       identityResolver: options.identityResolver ?? sessionIdentityResolver,
       timeZone: options.timeZone,
+      coach: options.coach,
     }),
   )
 
