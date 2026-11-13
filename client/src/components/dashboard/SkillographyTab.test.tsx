@@ -82,6 +82,22 @@ describe('skillography', () => {
     expect(within(dialog).getByText('Context: SQL joins')).toBeInTheDocument()
   })
 
+  it('uses the selected skill for AI Coach activities and related modules', async () => {
+    const user = await openSkillographyTab()
+
+    await user.type(await screen.findByLabelText('Search skills'), 'Transformer')
+    await user.click(await screen.findByRole('button', { name: /Transformer models/ }))
+    await screen.findByRole('heading', { level: 3, name: 'Transformer models' })
+
+    await user.click(screen.getByRole('button', { name: 'Explore with AI Coach' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'AI Coach' })
+    expect(await within(dialog).findByText('Context: Transformer models')).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'Open DL for NLP' }),
+    ).toBeInTheDocument()
+  })
+
   it('explores career pathways with coverage, missing competencies and projects', async () => {
     const user = await openSkillographyTab()
 
@@ -111,6 +127,10 @@ describe('skillography', () => {
       await within(dialog).findByRole('heading', { name: 'Career pathway context' }),
     ).toBeInTheDocument()
     expect(within(dialog).getByText('Junior Data Analyst', { selector: 'strong' })).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'Open Data Visualization Tools' }),
+    ).toBeInTheDocument()
+    expect(within(dialog).getAllByText(/SQL joins/).length).toBeGreaterThan(0)
   })
 
   it('shows a retryable error without breaking the dashboard', async () => {

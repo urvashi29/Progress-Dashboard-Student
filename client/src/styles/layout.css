@@ -1622,15 +1622,16 @@ button.career-card:hover {
   align-content: center;
   gap: 18px;
   padding: clamp(24px, 4vw, 42px);
+  border: 1px solid var(--color-primary-soft);
   border-radius: var(--radius-xl);
-  background: linear-gradient(155deg, #ff0046, #c8003a);
-  color: #ffffff;
-  box-shadow: var(--shadow-md);
+  background: linear-gradient(155deg, var(--color-primary-subtle), var(--color-primary-soft));
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
 }
 
 .login-aside h2 {
   font-size: clamp(1.25rem, 2vw, 1.55rem);
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .login-aside ul {
@@ -1644,8 +1645,8 @@ button.career-card:hover {
 
 .login-aside__note {
   font-size: 0.8rem;
-  opacity: 0.9;
-  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  color: var(--color-text-muted);
+  border-top: 1px solid rgba(255, 0, 70, 0.18);
   padding-top: 14px;
 }
 

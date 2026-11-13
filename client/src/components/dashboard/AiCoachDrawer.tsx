@@ -1,4 +1,11 @@
-import { CATALOG_NOTE, getModuleBySlug, type Recommendation } from '@spd/shared'
+import {
+  CAREER_PATHS,
+  CATALOG_NOTE,
+  findSkillByName,
+  getModuleBySlug,
+  getSkillById,
+  type Recommendation,
+} from '@spd/shared'
 import { useCoach } from '../../hooks/useCoach'
 import { formatPercent } from '../../lib/format'
 import { RECOMMENDATION_LABEL, SKILL_IMPORTANCE_LABEL } from '../../lib/status'
@@ -37,9 +44,32 @@ export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerP
   const recommendation = state.status === 'success' ? pickRecommendation(state.data.recommendations, context) : null
   const recommendationModule = recommendation ? getModuleBySlug(recommendation.moduleSlug) : undefined
   const contextModule = context.moduleSlug ? getModuleBySlug(context.moduleSlug) : undefined
+  const contextSkill = context.skillName ? findSkillByName(context.skillName) : undefined
+  const contextCareer = context.careerTitle
+    ? CAREER_PATHS.find((career) => career.title === context.careerTitle)
+    : undefined
+  const careerModules =
+    contextCareer?.moduleSlugs
+      .map((slug) => getModuleBySlug(slug))
+      .filter((module): module is NonNullable<typeof module> => module !== undefined) ?? []
   const focusModule = recommendationModule ?? contextModule
-  const activities = focusModule?.skills.flatMap((skill) => skill.activityTemplates).slice(0, 4) ?? []
-  const skills = focusModule?.skills.slice(0, 4) ?? []
+  const activities =
+    contextSkill?.practiceActivities.slice(0, 4) ??
+    (contextCareer
+      ? careerModules.flatMap((module) =>
+          module.skills.flatMap((skill) => skill.activityTemplates),
+        ).slice(0, 4)
+      : undefined) ??
+    focusModule?.skills.flatMap((skill) => skill.activityTemplates).slice(0, 4) ??
+    []
+  const skills = contextSkill
+    ? [{ id: contextSkill.id, name: contextSkill.name, importance: contextSkill.importance }]
+    : contextCareer
+      ? contextCareer.requiredSkillIds
+          .map((skillId) => getSkillById(skillId))
+          .filter((skill): skill is NonNullable<typeof skill> => skill !== undefined)
+          .slice(0, 4)
+      : (focusModule?.skills.slice(0, 4) ?? [])
 
   return (
     <Drawer
@@ -173,7 +203,37 @@ export function AiCoachDrawer({ context, onClose, onOpenModule }: AiCoachDrawerP
 
           <section className="drawer__section" aria-labelledby="coach-modules-heading">
             <h3 id="coach-modules-heading">Related modules</h3>
-            {focusModule ? (
+            {contextSkill ? (
+              <div className="drawer__actions">
+                {contextSkill.moduleAssociations.map((association) => (
+                  <Button
+                    key={association.moduleSlug}
+                    variant="secondary"
+                    onClick={() => {
+                      onOpenModule(association.moduleSlug)
+                      onClose()
+                    }}
+                  >
+                    Open {association.moduleName}
+                  </Button>
+                ))}
+              </div>
+            ) : contextCareer ? (
+              <div className="drawer__actions">
+                {careerModules.map((module) => (
+                  <Button
+                    key={module.slug}
+                    variant="secondary"
+                    onClick={() => {
+                      onOpenModule(module.slug)
+                      onClose()
+                    }}
+                  >
+                    Open {module.name}
+                  </Button>
+                ))}
+              </div>
+            ) : focusModule ? (
               <div className="drawer__actions">
                 <Button
                   variant="secondary"
