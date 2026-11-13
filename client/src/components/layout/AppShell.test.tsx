@@ -5,7 +5,7 @@ import { renderApp } from '../../test/renderApp'
 
 async function renderDashboard() {
   renderApp()
-  await screen.findByRole('heading', { name: /your learning progress/i })
+  await screen.findByRole('heading', { name: /my learning dashboard/i })
 }
 
 describe('application shell', () => {
@@ -23,7 +23,14 @@ describe('application shell', () => {
     const user = userEvent.setup()
     await renderDashboard()
 
-    await user.click(screen.getByRole('link', { name: /view relational databases module details/i }))
+    await user.click(screen.getByRole('tab', { name: 'Modules' }))
+    const article = await screen.findByRole('article', { name: 'Relational Databases' })
+    await user.click(within(article).getByRole('button', { name: 'View Details' }))
+
+    const dialog = await screen.findByRole('dialog')
+    await within(dialog).findByRole('heading', { name: 'Relational Databases' })
+    await user.click(within(dialog).getByRole('link', { name: 'Open full module page' }))
+
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Relational Databases' }),
     ).toBeInTheDocument()
@@ -32,7 +39,7 @@ describe('application shell', () => {
     await user.click(within(mainNav).getByRole('link', { name: 'Progress Dashboard' }))
 
     expect(
-      await screen.findByRole('heading', { name: /your learning progress/i }),
+      await screen.findByRole('heading', { name: /my learning dashboard/i }),
     ).toBeInTheDocument()
   })
 

@@ -24,7 +24,7 @@ describe('login and protected routes', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(
-      await screen.findByRole('heading', { name: /your learning progress/i }),
+      await screen.findByRole('heading', { name: /my learning dashboard/i }),
     ).toBeInTheDocument()
     expect(screen.getByText('Welcome back, Aanya.')).toBeInTheDocument()
   })
@@ -45,7 +45,7 @@ describe('login and protected routes', () => {
     renderApp({ route: '/login', authenticated: true })
 
     expect(
-      await screen.findByRole('heading', { name: /your learning progress/i }),
+      await screen.findByRole('heading', { name: /my learning dashboard/i }),
     ).toBeInTheDocument()
   })
 

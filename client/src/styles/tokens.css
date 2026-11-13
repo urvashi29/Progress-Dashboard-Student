@@ -1,23 +1,30 @@
 :root {
   color-scheme: light;
 
-  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
 
-  --color-bg: #f4f6fb;
-  --color-bg-soft: #eef2f9;
+  /* Brand palette */
+  --color-primary: #ff0046;
+  --color-primary-strong: #e60040;
+  --color-primary-soft: #ffe3ea;
+  --color-primary-subtle: #fff1f5;
+
+  /* Surfaces */
+  --color-bg: #fffafc;
+  --color-bg-soft: #fff1f5;
   --color-surface: #ffffff;
-  --color-surface-muted: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-text: #0f172a;
-  --color-text-muted: #5b6779;
+  --color-surface-muted: #fff7fa;
+  --color-border: #e8e8ef;
+  --color-border-strong: #d8d8e3;
 
-  --color-primary: #1d4ed8;
-  --color-primary-strong: #1e40af;
-  --color-primary-soft: #e8efff;
+  /* Text */
+  --color-text: #111111;
+  --color-text-muted: #64748b;
+  --color-text-soft: #8b93a7;
 
-  --color-info: #1d4ed8;
-  --color-info-soft: #e8efff;
+  /* Semantic status (restrained, accessible) */
+  --color-info: #ff0046;
+  --color-info-soft: #ffe3ea;
   --color-positive: #0f7a4f;
   --color-positive-soft: #e6f7ee;
   --color-warning: #9a5b00;
@@ -29,13 +36,18 @@
   --color-muted-badge: #64748b;
   --color-muted-badge-soft: #f1f5f9;
 
+  /* Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 18px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 12px 32px -18px rgba(15, 23, 42, 0.35);
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.04);
+  --shadow-md: 0 14px 38px -22px rgba(17, 17, 17, 0.28);
+  --shadow-lg: 0 26px 60px -30px rgba(17, 17, 17, 0.35);
 
-  --sidebar-width: 264px;
-  --content-max: 1200px;
+  /* Layout */
+  --sidebar-width: 232px;
+  --content-max: 1240px;
 }

@@ -3,122 +3,147 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { MOCK_SKILLOGRAPHY } from '../mocks/skillography'
 import { renderApp } from '../test/renderApp'
 import { server } from '../test/server'
 
 async function renderDashboard() {
   renderApp()
-  await screen.findByRole('heading', { name: /your learning progress/i })
+  await screen.findByRole('heading', { name: /my learning dashboard/i })
 }
 
 describe('dashboard', () => {
-  it('shows the student name, authoritative overall progress, and reference-only module average', async () => {
+  it('renders the redesigned header with the student greeting and AI Coach action', async () => {
     await renderDashboard()
 
+    expect(screen.getByRole('heading', { level: 1, name: 'My Learning Dashboard' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Track your progress, develop new skills, and explore your learning opportunities.',
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByText('Welcome back, Aanya.')).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: '34% of your course completed' }),
-    ).toBeInTheDocument()
-
-    const overall = screen.getByRole('region', { name: /34% of your course completed/i })
-    expect(within(overall).getByText(/module average \(reference only\)/i)).toBeInTheDocument()
-    expect(within(overall).getByText(/this is not your overall progress/i)).toBeInTheDocument()
-    expect(within(overall).getByText(/not calculated by averaging/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'AI Coach' })).toBeInTheDocument()
   })
 
-  it('renders learning health with status, expected progress, pace, update age, and reasons', async () => {
+  it('shows four summary cards using authoritative API values', async () => {
     await renderDashboard()
 
-    const health = screen.getByRole('region', { name: 'Learning health' })
-    expect(within(health).getAllByText('Behind').length).toBeGreaterThan(0)
-    expect(within(health).getByText('71%')).toBeInTheDocument()
-    expect(within(health).getByText('34%')).toBeInTheDocument()
-    expect(within(health).getByText(/0\.50x of expected pace/i)).toBeInTheDocument()
-    expect(within(health).getAllByText(/46 days ago/i).length).toBeGreaterThan(0)
-    expect(
-      within(health).getByText('34% overall vs 71% expected for this cohort'),
-    ).toBeInTheDocument()
-    expect(within(health).getByText('Last progress update 46 days ago')).toBeInTheDocument()
+    const overall = screen.getByRole('button', { name: /overall progress/i })
+    expect(within(overall).getByText('34%')).toBeInTheDocument()
+    expect(within(overall).getByText(/authoritative platform value/i)).toBeInTheDocument()
+
+    const modules = screen.getByRole('button', { name: /modules completed/i })
+    expect(within(modules).getByText('1/11')).toBeInTheDocument()
+
+    const pace = screen.getByRole('button', { name: /learning pace/i })
+    expect(within(pace).getByText('Behind')).toBeInTheDocument()
+    expect(within(pace).getByText('0.50x of expected pace')).toBeInTheDocument()
+
+    const expectedSkills = MOCK_SKILLOGRAPHY.skills.filter(
+      (skill) => skill.status !== 'NOT_IN_PLAN',
+    ).length
+    const skills = screen.getByRole('button', { name: /estimated skills/i })
+    expect(await within(skills).findByText(String(expectedSkills))).toBeInTheDocument()
   })
 
-  it('groups track summaries in curated order and labels derived track progress', async () => {
+  it('renders the overview snapshot, continue-learning cards and coach preview', async () => {
     await renderDashboard()
 
-    const tracks = screen.getByRole('region', { name: 'Learning tracks' })
+    expect(screen.getByRole('heading', { name: 'Continue learning' })).toBeInTheDocument()
+    const continueSection = screen.getByRole('region', { name: 'Continue learning' })
+    const continueCards = within(continueSection).getAllByRole('article')
+    expect(continueCards).toHaveLength(3)
+    expect(within(continueCards[0]!).getByRole('heading', { name: 'Numerical Programming in Python' })).toBeInTheDocument()
+    expect(within(continueCards[1]!).getByRole('heading', { name: 'Relational Databases' })).toBeInTheDocument()
+    expect(within(continueCards[2]!).getByRole('heading', { name: 'Data Visualization Tools' })).toBeInTheDocument()
+
+    const tracks = screen.getByRole('region', { name: 'Learning track snapshot' })
     const trackNames = within(tracks)
-      .getAllByRole('heading', { level: 3 })
-      .map((heading) => heading.textContent)
-
+      .getAllByRole('button', { name: /^View .* track$/ })
+      .map((button) => button.getAttribute('aria-label'))
     expect(trackNames).toEqual([
-      'Foundations',
-      'Data & Analytics',
-      'AI & ML',
-      'Production & Industry',
+      'View Foundations track',
+      'View Data & Analytics track',
+      'View AI & ML track',
+      'View Production & Industry track',
     ])
-    expect(within(tracks).getAllByText(/track progress \(derived\)/i).length).toBe(4)
-    expect(within(tracks).getAllByText(/not your overall progress/i).length).toBeGreaterThan(0)
+
+    const coachPreview = screen.getByRole('region', { name: 'Your Next Learning Step' })
+    expect(within(coachPreview).getByText('Rescue Relational Databases')).toBeInTheDocument()
+    expect(within(coachPreview).getByText('Preview only')).toBeInTheDocument()
+    expect(within(coachPreview).getByRole('button', { name: /explore with ai coach/i })).toBeInTheDocument()
   })
 
-  it('renders all modules in curated catalog order', async () => {
+  it('exposes five dashboard tabs with Overview selected by default', async () => {
     await renderDashboard()
 
-    const modulesSection = screen.getByRole('region', { name: 'Your modules' })
-    const moduleTitles = within(modulesSection)
-      .getAllByRole('article')
-      .map((article) => within(article).getByRole('heading', { level: 4 }).textContent)
-
-    const expected = [...MOCK_DASHBOARD.modules]
-      .sort((a, b) => a.catalogOrder - b.catalogOrder)
-      .map((module) => module.name)
-
-    expect(moduleTitles).toEqual(expected)
+    const tablist = screen.getByRole('tablist', { name: 'Dashboard sections' })
+    const tabs = within(tablist).getAllByRole('tab')
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      'Overview',
+      'Modules',
+      'Learning Tracks',
+      'Analytics',
+      'Skillography',
+    ])
+    expect(within(tablist).getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
-  it('distinguishes a module outside the plan from an assigned module at 0%', async () => {
+  it('switches tabs and updates the selected state', async () => {
+    const user = userEvent.setup()
     await renderDashboard()
 
-    const modulesSection = screen.getByRole('region', { name: 'Your modules' })
-    const notInPlan = within(modulesSection).getByRole('article', { name: 'Distributed ML' })
-    const notStarted = within(modulesSection).getByRole('article', { name: 'DL for NLP' })
+    await user.click(screen.getByRole('tab', { name: 'Modules' }))
 
-    expect(within(notInPlan).getByText(/not included in your current plan/i)).toBeInTheDocument()
-    expect(within(notInPlan).queryByText('0%')).not.toBeInTheDocument()
-    expect(within(notInPlan).getByText('Not in Plan')).toBeInTheDocument()
-
-    expect(within(notStarted).getByText('0%')).toBeInTheDocument()
-    expect(within(notStarted).getByText('Not Started')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Module explorer' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Modules' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('heading', { name: 'My Learning Dashboard' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Continue learning' })).not.toBeInTheDocument()
   })
 
-  it('provides accessible table equivalents for every chart', async () => {
+  it('supports keyboard navigation across the dashboard tabs', async () => {
+    const user = userEvent.setup()
     await renderDashboard()
 
-    expect(screen.getByRole('heading', { name: 'Module progress comparison' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Learning track comparison' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Overall vs expected progress' })).toBeInTheDocument()
+    const tablist = screen.getByRole('tablist', { name: 'Dashboard sections' })
+    const overview = within(tablist).getByRole('tab', { name: 'Overview' })
+    overview.focus()
 
-    expect(
-      screen.getByRole('table', { name: 'Module progress comparison data' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('table', { name: 'Learning track comparison data' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('table', { name: 'Overall versus expected progress data' }),
-    ).toBeInTheDocument()
+    await user.keyboard('{ArrowRight}')
+    expect(await screen.findByRole('heading', { name: 'Module explorer' })).toBeInTheDocument()
+    expect(within(tablist).getByRole('tab', { name: 'Modules' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    await user.keyboard('{End}')
+    expect(await screen.findByRole('heading', { name: 'Skillography' })).toBeInTheDocument()
+    expect(within(tablist).getByRole('tab', { name: 'Skillography' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    await user.keyboard('{Home}')
+    expect(await screen.findByRole('heading', { name: 'Continue learning' })).toBeInTheDocument()
+    expect(within(tablist).getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
-  it('clearly labels coach recommendations as mock previews', async () => {
+  it('navigates to a tab from a summary card', async () => {
+    const user = userEvent.setup()
     await renderDashboard()
 
-    const coach = screen.getByRole('region', { name: 'Your AI Skill Coach' })
-    expect(within(coach).getByText(/not live ai output/i)).toBeInTheDocument()
-    expect(within(coach).getByText('Preview only')).toBeInTheDocument()
-    expect(within(coach).getAllByText(/estimated from module progress/i).length).toBeGreaterThan(0)
-    expect(within(coach).getAllByText(/low confidence/i).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: /modules completed/i }))
 
-    const planLinks = within(coach).getAllByRole('link', { name: 'View learning plan' })
-    expect(planLinks).toHaveLength(2)
-    expect(planLinks[0]).toHaveAttribute('href', '/modules/relational-databases#learning-plan')
+    expect(await screen.findByRole('heading', { name: 'Module explorer' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Modules' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('shows an honest empty coach state when there are no recommendations', async () => {
@@ -133,13 +158,13 @@ describe('dashboard', () => {
 
     await renderDashboard()
 
-    expect(screen.getByRole('heading', { name: 'No recommendations yet' })).toBeInTheDocument()
     expect(
-      screen.getByText(/recommendations will appear here when the coach api is available/i),
+      screen.getByText(/a personalized recommendation is not available yet/i),
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /explore with ai coach/i })).toBeInTheDocument()
   })
 
-  it('shows empty chart states when no modules are in the plan', async () => {
+  it('shows empty track snapshot states when no modules are in the plan', async () => {
     const emptyPlan = {
       ...MOCK_DASHBOARD,
       modules: MOCK_DASHBOARD.modules.map((module) => ({
@@ -163,8 +188,10 @@ describe('dashboard', () => {
 
     await renderDashboard()
 
-    expect(screen.getByRole('heading', { name: 'No module progress yet' })).toBeInTheDocument()
     expect(screen.getAllByText(/no modules from this track are in your plan/i)).toHaveLength(4)
+    expect(
+      screen.getByText('You have no incomplete modules in your current plan.'),
+    ).toBeInTheDocument()
   })
 
   it('shows a loading state while the dashboard request is pending', async () => {
@@ -179,7 +206,7 @@ describe('dashboard', () => {
 
     expect(await screen.findByText(/loading your progress/i)).toBeInTheDocument()
     expect(
-      await screen.findByRole('heading', { name: /your learning progress/i }),
+      await screen.findByRole('heading', { name: 'My Learning Dashboard' }),
     ).toBeInTheDocument()
   })
 
