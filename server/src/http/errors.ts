@@ -30,8 +30,17 @@ export function apiErrorHandler(
   error: unknown,
   _req: Request,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction,
 ): void {
+  if (res.headersSent) {
+    console.error(
+      '[api] Error after response was sent',
+      error instanceof Error ? error.message : 'unknown',
+    )
+    next(error)
+    return
+  }
+
   if (error instanceof HttpError) {
     res.status(error.status).json({
       error: error.code,
