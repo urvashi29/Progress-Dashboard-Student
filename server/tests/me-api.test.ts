@@ -1,4 +1,5 @@
 import {
+  CoachSummarySchema,
   DashboardResponseSchema,
   getMockEnrollment,
   getMockStudent,
@@ -118,6 +119,29 @@ describe('GET /api/v1/me/dashboard', () => {
 
     expect(response.status).toBe(404)
     expect(response.body).toMatchObject({ error: 'enrollment_not_found' })
+  })
+})
+
+describe('GET /api/v1/me/coach', () => {
+  it('returns the coach summary used by the dashboard contract', async () => {
+    const app = testApp({ studentId: 1 })
+    const response = await request(app).get('/api/v1/me/coach')
+
+    expect(response.status).toBe(200)
+    const coach = CoachSummarySchema.parse(response.body)
+    expect(coach.headline).toMatch(/not available yet/i)
+    expect(coach.recommendations).toEqual([])
+
+    const dashboard = DashboardResponseSchema.parse(
+      (await request(app).get('/api/v1/me/dashboard')).body,
+    )
+    expect(coach).toEqual(dashboard.coachSummary)
+  })
+
+  it('rejects an unauthenticated request with 401', async () => {
+    const response = await request(testApp({ studentId: null })).get('/api/v1/me/coach')
+    expect(response.status).toBe(401)
+    expect(response.body).toMatchObject({ error: 'unauthenticated' })
   })
 })
 

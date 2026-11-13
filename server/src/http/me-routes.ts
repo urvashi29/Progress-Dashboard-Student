@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import type { Clock } from '../platform/time'
 import { systemClock } from '../platform/time'
 import type { Repositories } from '../repositories/contracts'
-import { buildDashboard } from '../services/dashboard'
+import { buildDashboard, PLACEHOLDER_COACH_SUMMARY } from '../services/dashboard'
 import { buildModuleDetail, buildModuleList } from '../services/modules'
 import {
   buildCareerPathDetail,
@@ -107,6 +107,16 @@ export function createMeRouter(dependencies: MeRouterDependencies): Router {
           timeZone,
         }),
       )
+    }),
+  )
+
+  router.get(
+    '/coach',
+    asyncRoute(async (req, res) => {
+      const context = await loadStudentContext(dependencies, req, res)
+      if (!context) return
+
+      res.json(PLACEHOLDER_COACH_SUMMARY)
     }),
   )
 
