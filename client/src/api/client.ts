@@ -32,7 +32,15 @@ export class ApiError extends Error {
   }
 
   get isUnauthorized(): boolean {
-    return this.status === 401 || this.status === 403
+    return this.status === 401
+  }
+
+  get isForbidden(): boolean {
+    return this.status === 403
+  }
+
+  get isCsrfError(): boolean {
+    return this.code === 'invalid_csrf_token'
   }
 
   get isNotFound(): boolean {
@@ -44,8 +52,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function defaultErrorMessage(status: number): string {
-  if (status === 401) return 'Your session has expired. Please sign in again.'
+function defaultErrorMessage(status: number, code: string | null): string {
+  if (code === 'invalid_credentials') return 'Email or password is incorrect.'
+  if (code === 'invalid_csrf_token') {
+    return 'Your security token expired. Refresh the page and try again.'
+  }
+  if (code === 'validation_error') return 'Please check the information and try again.'
+  if (code === 'internal_error') return 'Something went wrong on our side. Please try again.'
+  if (code === 'unauthorized') return 'Please sign in to continue.'
+  if (code === 'forbidden') return 'You do not have access to this resource.'
+  if (status === 401) return 'Please sign in to continue.'
   if (status === 403) return 'You do not have access to this resource.'
   if (status === 404) return 'We could not find what you requested.'
   if (status >= 500) return 'Something went wrong on our side. Please try again.'
@@ -91,7 +107,7 @@ async function sendRequest(path: string, init: ApiInit): Promise<Response> {
 
   if (!response.ok) {
     const { message, code } = await readError(response)
-    throw new ApiError(message ?? defaultErrorMessage(response.status), response.status, code)
+    throw new ApiError(message ?? defaultErrorMessage(response.status, code), response.status, code)
   }
 
   return response

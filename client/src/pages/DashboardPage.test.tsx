@@ -233,6 +233,24 @@ describe('dashboard', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
+  it('shows a CSRF error rather than session-expired when the security token is rejected', async () => {
+    server.use(
+      http.get('*/api/v1/me/dashboard', () =>
+        HttpResponse.json({ error: 'invalid_csrf_token' }, { status: 403 }),
+      ),
+    )
+
+    renderApp()
+
+    expect(
+      await screen.findByRole('heading', { name: /could not load your dashboard/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/your security token expired/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /your session has expired/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it('handles an expired session and offers a sign-in action', async () => {
     const user = userEvent.setup()
 

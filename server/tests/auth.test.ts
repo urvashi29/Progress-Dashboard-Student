@@ -4,6 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Express } from 'express'
 import type { Knex } from 'knex'
 import {
+  FORBIDDEN_MESSAGE,
+  INVALID_CREDENTIALS_MESSAGE,
+  INVALID_CSRF_MESSAGE,
+  SESSION_EXPIRED_MESSAGE,
+} from '../src/auth/messages'
+import {
   bootstrapDatabase,
   prepareTestEnvironment,
 } from './helpers/test-workspace'
@@ -73,6 +79,13 @@ async function login(
   return agent.post('/api/v1/auth/login').set('x-csrf-token', token).send({ email, password })
 }
 
+function sessionIdFromCookie(cookie: string): string {
+  const value = cookie.split(';')[0]?.split('=').slice(1).join('=')
+  if (!value) throw new Error('cookie value is missing')
+  const decoded = decodeURIComponent(value)
+  return decoded.startsWith('s:') ? decoded.slice(2).split('.')[0] ?? '' : decoded
+}
+
 beforeAll(async () => {
   db = await bootstrapDatabase()
   studentAId = await insertStudent('Fictional Avery', STUDENT_A.email, STUDENT_A.password, 'student')
@@ -98,6 +111,15 @@ describe('authentication', () => {
 
     const imports = await request(app).get('/api/v1/admin/imports')
     expect(imports.status).toBe(401)
+
+    const invalidCookie = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Cookie', 'spd.sid=invalid')
+    expect(invalidCookie.status).toBe(401)
+    expect(invalidCookie.body).toEqual({
+      error: 'unauthorized',
+      message: SESSION_EXPIRED_MESSAGE,
+    })
   })
 
   it('requires a CSRF token to log in', async () => {
@@ -105,7 +127,10 @@ describe('authentication', () => {
       .post('/api/v1/auth/login')
       .send({ email: STUDENT_A.email, password: STUDENT_A.password })
     expect(response.status).toBe(403)
-    expect(response.body.error).toBe('invalid_csrf_token')
+    expect(response.body).toEqual({
+      error: 'invalid_csrf_token',
+      message: INVALID_CSRF_MESSAGE,
+    })
   })
 
   it('returns the same generic error for unknown emails and bad passwords', async () => {
@@ -115,17 +140,28 @@ describe('authentication', () => {
 
     expect(unknown.status).toBe(401)
     expect(wrong.status).toBe(401)
-    expect(unknown.body).toEqual({ error: 'invalid_credentials' })
-    expect(wrong.body).toEqual({ error: 'invalid_credentials' })
+    expect(unknown.body).toEqual({
+      error: 'invalid_credentials',
+      message: INVALID_CREDENTIALS_MESSAGE,
+    })
+    expect(wrong.body).toEqual({
+      error: 'invalid_credentials',
+      message: INVALID_CREDENTIALS_MESSAGE,
+    })
   })
 
   it('logs in with an HttpOnly cookie and only that student enrollment', async () => {
     const agent = request.agent(app)
     const csrfResponse = await agent.get('/api/v1/auth/csrf')
     const preLoginCookie = csrfResponse.headers['set-cookie']?.[0] as string | undefined
+    const preLoginCsrf = csrfResponse.body.csrfToken as string
 
-    const response = await login(agent, STUDENT_A.email, STUDENT_A.password)
+    const response = await agent
+      .post('/api/v1/auth/login')
+      .set('x-csrf-token', preLoginCsrf)
+      .send({ email: STUDENT_A.email, password: STUDENT_A.password })
     expect(response.status).toBe(200)
+    expect(response.body.csrfToken).not.toBe(preLoginCsrf)
 
     expect(response.body.student).toMatchObject({
       id: studentAId,
@@ -146,6 +182,16 @@ describe('authentication', () => {
     expect(cookie.toLowerCase()).toContain('samesite=lax')
     expect(cookie.toLowerCase()).toContain('path=/')
     expect(cookie.toLowerCase()).not.toContain('secure')
+
+    const sid = sessionIdFromCookie(cookie)
+    const sessionRow = await db('sessions').where({ sid }).first<{
+      data: string
+      expires_at: number | string
+    }>()
+    expect(sessionRow).toBeTruthy()
+    expect(JSON.parse(sessionRow?.data ?? '{}')).toMatchObject({ studentId: studentAId })
+    expect(Number(sessionRow?.expires_at)).toBeGreaterThan(Date.now())
+    expect(Number(sessionRow?.expires_at)).toBeLessThanOrEqual(Date.now() + 2 * 60 * 60 * 1000)
 
     // Session id rotates on login (session fixation protection).
     if (preLoginCookie) {
@@ -175,6 +221,24 @@ describe('authentication', () => {
       .set('Cookie', cookie)
     expect(coach.status).toBe(200)
     expect(coach.body.assessmentData).toBeDefined()
+  })
+
+  it('rejects an expired server-side session and removes its row', async () => {
+    const agent = request.agent(app)
+    const loginResponse = await login(agent, STUDENT_A.email, STUDENT_A.password)
+    expect(loginResponse.status).toBe(200)
+    const cookie = loginResponse.headers['set-cookie']?.[0] as string
+    const sid = sessionIdFromCookie(cookie)
+
+    await db('sessions').where({ sid }).update({ expires_at: Date.now() - 1_000 })
+
+    const me = await agent.get('/api/v1/auth/me')
+    expect(me.status).toBe(401)
+    expect(me.body).toEqual({
+      error: 'unauthorized',
+      message: SESSION_EXPIRED_MESSAGE,
+    })
+    expect(await db('sessions').where({ sid }).first()).toBeUndefined()
   })
 
   it('ignores a studentId parameter and only returns the session student', async () => {
@@ -242,7 +306,10 @@ describe('authorization', () => {
 
     const imports = await agent.get('/api/v1/admin/imports')
     expect(imports.status).toBe(403)
-    expect(imports.body.error).toBe('forbidden')
+    expect(imports.body).toEqual({
+      error: 'forbidden',
+      message: FORBIDDEN_MESSAGE,
+    })
   })
 
   it('allows an admin to list imports', async () => {

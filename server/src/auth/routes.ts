@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { env } from '../config/env'
 import { asyncHandler } from '../http/errors'
+import { INVALID_CREDENTIALS_MESSAGE, SESSION_EXPIRED_MESSAGE } from './messages'
 import { requireAuth } from './middleware'
 import { verifyDummyPassword, verifyPassword } from './passwords'
 import type { LoginRateLimiter } from './rate-limit'
@@ -44,13 +45,19 @@ export function createAuthRouter(loginLimiter: LoginRateLimiter): Router {
 
       if (!student || !student.password_hash) {
         await verifyDummyPassword(body.password)
-        res.status(401).json({ error: 'invalid_credentials' })
+        res.status(401).json({
+          error: 'invalid_credentials',
+          message: INVALID_CREDENTIALS_MESSAGE,
+        })
         return
       }
 
       const valid = await verifyPassword(body.password, student.password_hash)
       if (!valid) {
-        res.status(401).json({ error: 'invalid_credentials' })
+        res.status(401).json({
+          error: 'invalid_credentials',
+          message: INVALID_CREDENTIALS_MESSAGE,
+        })
         return
       }
 
@@ -84,7 +91,10 @@ export function createAuthRouter(loginLimiter: LoginRateLimiter): Router {
     asyncHandler(async (req, res) => {
       const auth = req.auth
       if (!auth) {
-        res.status(401).json({ error: 'unauthorized' })
+        res.status(401).json({
+          error: 'unauthorized',
+          message: SESSION_EXPIRED_MESSAGE,
+        })
         return
       }
       const csrfToken = ensureCsrfToken(req)

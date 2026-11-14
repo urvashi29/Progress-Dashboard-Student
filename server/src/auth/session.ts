@@ -4,6 +4,7 @@ import session from 'express-session'
 import type { Knex } from 'knex'
 import { env, sessionSecret } from '../config/env'
 import { KnexSessionStore } from '../db/session-store'
+import { INVALID_CSRF_MESSAGE } from './messages'
 
 const SESSION_TTL_MS = env.SESSION_TTL_HOURS * 60 * 60 * 1000
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -55,7 +56,10 @@ export const requireCsrf: RequestHandler = (req, res, next) => {
   const expected = req.session.csrfToken
 
   if (!provided || !expected || !tokensMatch(provided, expected)) {
-    res.status(403).json({ error: 'invalid_csrf_token' })
+    res.status(403).json({
+      error: 'invalid_csrf_token',
+      message: INVALID_CSRF_MESSAGE,
+    })
     return
   }
 

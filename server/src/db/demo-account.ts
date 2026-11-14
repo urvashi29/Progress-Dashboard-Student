@@ -12,7 +12,7 @@ import { db } from './client'
  */
 const LOCAL_DEMO_PASSWORD = 'demo1234'
 
-async function main(): Promise<void> {
+export async function provisionDemoAccount(): Promise<void> {
   if (env.NODE_ENV === 'production') {
     throw new Error('Refusing to provision a demo account in production')
   }
@@ -46,11 +46,16 @@ async function main(): Promise<void> {
   console.log('[db] Fictional data only. Never provision a demo account against production.')
 }
 
-void main()
-  .catch((error: unknown) => {
-    console.error('[db] Demo account setup failed', error instanceof Error ? error.message : error)
-    process.exitCode = 1
-  })
-  .finally(() => {
-    void db.destroy()
-  })
+if (typeof require !== 'undefined' && require.main === module) {
+  void provisionDemoAccount()
+    .catch((error: unknown) => {
+      console.error(
+        '[db] Demo account setup failed',
+        error instanceof Error ? error.message : error,
+      )
+      process.exitCode = 1
+    })
+    .finally(() => {
+      void db.destroy()
+    })
+}

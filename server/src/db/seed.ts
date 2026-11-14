@@ -93,7 +93,7 @@ async function seedModuleProgress(
   }
 }
 
-async function main(): Promise<void> {
+export async function seedDemoData(): Promise<void> {
   const moduleIdBySlug = await seedCatalog()
   const studentIdByFixtureId = await seedMockStudents()
   const enrollmentIdByFixtureId = await seedMockEnrollments(studentIdByFixtureId)
@@ -106,11 +106,13 @@ async function main(): Promise<void> {
   console.log('[db] Seeded fixtures have no passwords; Excel import provisions accounts.')
 }
 
-void main()
-  .catch((error: unknown) => {
-    console.error('[db] Seed failed', error)
-    process.exitCode = 1
-  })
-  .finally(() => {
-    void db.destroy()
-  })
+if (typeof require !== 'undefined' && require.main === module) {
+  void seedDemoData()
+    .catch((error: unknown) => {
+      console.error('[db] Seed failed', error)
+      process.exitCode = 1
+    })
+    .finally(() => {
+      void db.destroy()
+    })
+}

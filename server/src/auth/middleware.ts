@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express'
 import { normalizeEmail } from '@spd/shared'
 import { env } from '../config/env'
 import { db } from '../db/client'
+import { FORBIDDEN_MESSAGE, SESSION_EXPIRED_MESSAGE } from './messages'
 import type { AuthContext, AuthRole } from './types'
 
 type StudentAuthRow = {
@@ -24,7 +25,10 @@ export function isAdminAuth(auth: Pick<AuthContext, 'role' | 'email'>): boolean 
 export const requireAuth: RequestHandler = (req, res, next) => {
   const studentId = req.session.studentId
   if (!studentId) {
-    res.status(401).json({ error: 'unauthorized' })
+    res.status(401).json({
+      error: 'unauthorized',
+      message: SESSION_EXPIRED_MESSAGE,
+    })
     return
   }
 
@@ -34,7 +38,10 @@ export const requireAuth: RequestHandler = (req, res, next) => {
     .then((row) => {
       if (!row) {
         req.session.destroy(() => {
-          res.status(401).json({ error: 'unauthorized' })
+          res.status(401).json({
+            error: 'unauthorized',
+            message: SESSION_EXPIRED_MESSAGE,
+          })
         })
         return
       }
@@ -53,11 +60,17 @@ export const requireAuth: RequestHandler = (req, res, next) => {
 
 export const requireAdmin: RequestHandler = (req, res, next) => {
   if (!req.auth) {
-    res.status(401).json({ error: 'unauthorized' })
+    res.status(401).json({
+      error: 'unauthorized',
+      message: SESSION_EXPIRED_MESSAGE,
+    })
     return
   }
   if (!isAdminAuth(req.auth)) {
-    res.status(403).json({ error: 'forbidden' })
+    res.status(403).json({
+      error: 'forbidden',
+      message: FORBIDDEN_MESSAGE,
+    })
     return
   }
   next()
