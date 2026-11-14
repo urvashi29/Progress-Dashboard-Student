@@ -47,7 +47,8 @@ export function prepareTestEnvironment(
 
 export async function bootstrapDatabase(): Promise<Knex> {
   const { db } = await import('../../src/db/client')
-  await db.migrate.latest()
+  const { initializeDatabase } = await import('../../src/db/initialize')
+  await initializeDatabase(db)
   const { seedCatalog } = await import('../../src/db/seed-catalog')
   await seedCatalog(db)
   return db

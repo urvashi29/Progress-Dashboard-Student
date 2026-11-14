@@ -1,12 +1,18 @@
 import { createApp } from './app'
-import { env } from './config/env'
+import { env, sqliteFile } from './config/env'
 import { db } from './db/client'
 import { initializeDatabase } from './db/initialize'
 
 async function main(): Promise<void> {
-  const applied = await initializeDatabase(db)
+  const location = env.DB_CLIENT === 'pg' ? 'PostgreSQL' : `SQLite (${sqliteFile})`
+  console.log(`[db] ${location}`)
+
+  const { applied, repairedSessionsTable } = await initializeDatabase(db)
   if (applied.length > 0) {
     console.log(`[db] Applied ${applied.length} pending migration(s)`)
+  }
+  if (repairedSessionsTable) {
+    console.warn('[db] Repaired missing sessions table without resetting data')
   }
 
   const app = createApp()
@@ -22,11 +28,11 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch((error: unknown) => {
+void main().catch(async (error: unknown) => {
   console.error(
     '[server] Startup failed',
     error instanceof Error ? error.message : 'unknown error',
   )
   process.exitCode = 1
-  void db.destroy()
+  await db.destroy()
 })

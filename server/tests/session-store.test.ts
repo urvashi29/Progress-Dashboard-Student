@@ -15,6 +15,7 @@ let db: Knex
 let store: InstanceType<typeof import('../src/db/session-store').KnexSessionStore>
 let applied: string[]
 let assertSessionStoreReady: typeof import('../src/db/initialize').assertSessionStoreReady
+let initializeDatabase: typeof import('../src/db/initialize').initializeDatabase
 
 const SID = 'fictional-test-session'
 const SESSION = {
@@ -59,7 +60,9 @@ beforeAll(async () => {
 
   const initializeModule = await import('../src/db/initialize')
   assertSessionStoreReady = initializeModule.assertSessionStoreReady
-  applied = await initializeModule.initializeDatabase(db)
+  initializeDatabase = initializeModule.initializeDatabase
+  const initialization = await initializeModule.initializeDatabase(db)
+  applied = initialization.applied
 
   const storeModule = await import('../src/db/session-store')
   store = new storeModule.KnexSessionStore(db, 60_000)
@@ -95,6 +98,58 @@ describe('database startup initialization', () => {
     } finally {
       await emptyDb.destroy()
     }
+  })
+
+  it('starts an existing database again without duplicating or deleting sessions', async () => {
+    await db('sessions').insert({
+      sid: 'existing-startup-session',
+      data: JSON.stringify({ studentId: 42 }),
+      expires_at: Date.now() + 60_000,
+      created_at: new Date().toISOString(),
+    })
+    const migrationsBefore = await db('knex_migrations').count<{ count: number }[]>({
+      count: '*',
+    })
+
+    const repeated = await initializeDatabase(db)
+    const migrationsAfter = await db('knex_migrations').count<{ count: number }[]>({
+      count: '*',
+    })
+
+    expect(repeated.applied).toEqual([])
+    expect(repeated.repairedSessionsTable).toBe(false)
+    expect(Number(migrationsAfter[0]?.count)).toBe(Number(migrationsBefore[0]?.count))
+    expect(
+      await db('sessions').where({ sid: 'existing-startup-session' }).first(),
+    ).toBeTruthy()
+  })
+
+  it('repairs a missing sessions table without resetting other data', async () => {
+    await db('students').insert({
+      name: 'Fictional Recovery Student',
+      email: 'recovery.student@example.com',
+      password_hash: null,
+      must_change_password: false,
+      role: 'student',
+      created_at: new Date().toISOString(),
+    })
+
+    await db.schema.dropTable('sessions')
+    expect(await db.schema.hasTable('sessions')).toBe(false)
+
+    const repaired = await initializeDatabase(db)
+    expect(repaired.repairedSessionsTable).toBe(true)
+    expect(await db.schema.hasTable('sessions')).toBe(true)
+    expect(
+      await db('students').where({ email: 'recovery.student@example.com' }).first(),
+    ).toBeTruthy()
+
+    await setSession('recovered-session', SESSION)
+    const record = await getSession('recovered-session')
+    expect(record).toMatchObject({ studentId: 1 })
+
+    const repeated = await initializeDatabase(db)
+    expect(repeated.repairedSessionsTable).toBe(false)
   })
 })
 

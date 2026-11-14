@@ -1,10 +1,14 @@
 import { env, sqliteFile } from '../config/env'
 import { db } from './client'
+import { initializeDatabase } from './initialize'
 
 async function main(): Promise<void> {
-  const [batch, applied] = await db.migrate.latest()
   const location = env.DB_CLIENT === 'pg' ? 'PostgreSQL' : `SQLite (${sqliteFile})`
-  console.log(`[db] ${location} — batch ${batch}, ${applied.length} migration(s) applied`)
+  const { applied, repairedSessionsTable } = await initializeDatabase(db)
+  console.log(`[db] ${location} — ${applied.length} migration(s) applied`)
+  if (repairedSessionsTable) {
+    console.warn('[db] Repaired missing sessions table without resetting data')
+  }
 }
 
 void main()

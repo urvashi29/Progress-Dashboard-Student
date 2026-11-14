@@ -51,12 +51,19 @@ Never commit `.env`. It is gitignored.
 ## 3. Set up the database
 
 ```bash
-npm run db:migrate
-npm run db:seed
-npm run db:demo
+npm run db:setup
 ```
 
-- `db:migrate` applies the append-only Knex migrations to SQLite.
+`db:setup` is the repeatable local setup command. It runs `db:migrate`,
+`db:seed`, and `db:demo` against the same `SQLITE_PATH`; it is safe to re-run.
+Each Git worktree resolves `SQLITE_PATH` under its own `server/` directory, so
+worktrees do not share a database. Do not copy a private database between
+worktrees.
+
+Run the steps separately only when needed:
+
+- `db:migrate` applies the append-only Knex migrations to SQLite and verifies
+  that the `sessions` table is ready before the API accepts requests.
 - `db:seed` loads the 13-module catalog and three fictional students on
   `example.com` (no passwords, no real data).
 - `db:demo` provisions a local-only password on the fictional demo student.
@@ -150,8 +157,12 @@ npm run db:reset      # roll back and re-apply schema (run db:seed after)
   state-changing request. Clearing cookies and reloading fixes stale sessions.
 - **Login shows mock data**: set `VITE_ENABLE_MOCKS=false` and restart Vite.
   MSW is for isolated frontend tests only.
-- **Demo login fails**: confirm `npm run db:migrate`, `db:seed`, and `db:demo`
-  ran against the same `SQLITE_PATH`.
+- **Demo login fails**: confirm `npm run db:setup` ran against the same
+  `SQLITE_PATH`.
+- **`no such table: sessions` or `ERR_HTTP_HEADERS_SENT`**: stop the server and
+  run `npm run db:migrate`. Startup also applies migrations and repairs a
+  missing sessions table without deleting existing rows. Do not delete the
+  database; `db:reset` is destructive and is only for disposable local data.
 - **Session secret error in production**: `SESSION_SECRET` is required when
   `NODE_ENV=production`.
 
@@ -160,5 +171,5 @@ npm run db:reset      # roll back and re-apply schema (run db:seed after)
 - `.env`, SQLite files, workbooks, and credentials files are gitignored.
 - Do not copy real student records into fixtures or MSW handlers.
 - Do not store passwords, session secrets, or CSRF tokens in browser storage.
-- The AI Skill Coach panel is a labeled placeholder in this phase; no AI keys
-  exist in the client.
+- The AI Skill Coach calls Gemini from the server only; no AI keys exist in
+  the client. Keep `GEMINI_API_KEY` server-side and scrubbed from logs.

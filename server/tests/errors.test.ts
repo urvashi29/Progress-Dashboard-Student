@@ -1,4 +1,5 @@
-import type { NextFunction, Request, Response } from 'express'
+import express, { type NextFunction, type Request, type Response } from 'express'
+import request from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
 import { apiErrorHandler } from '../src/http/errors'
 
@@ -37,6 +38,23 @@ describe('apiErrorHandler', () => {
     expect(res.status).not.toHaveBeenCalled()
     expect(res.json).not.toHaveBeenCalled()
     expect(next).toHaveBeenCalledWith(error)
+    errorSpy.mockRestore()
+  })
+
+  it('does not write a second response when a handler fails after sending headers', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const app = express()
+
+    app.get('/late-failure', (_req, res) => {
+      res.status(200).json({ ok: true })
+      throw new Error('session store failed after response')
+    })
+    app.use(apiErrorHandler)
+
+    const response = await request(app).get('/late-failure')
+
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ ok: true })
     errorSpy.mockRestore()
   })
 })

@@ -155,6 +155,28 @@ describe('authentication', () => {
     }
   })
 
+  it('keeps a session valid across a new app instance and allows coach access', async () => {
+    const agent = request.agent(app)
+    const loginResponse = await login(agent, STUDENT_A.email, STUDENT_A.password)
+    expect(loginResponse.status).toBe(200)
+    const cookie = loginResponse.headers['set-cookie']?.[0] as string
+
+    const { createApp } = await import('../src/app')
+    const restartedApp = createApp()
+
+    const me = await request(restartedApp)
+      .get('/api/v1/auth/me')
+      .set('Cookie', cookie)
+    expect(me.status).toBe(200)
+    expect(me.body.student.email).toBe(STUDENT_A.email)
+
+    const coach = await request(restartedApp)
+      .get('/api/v1/me/coach')
+      .set('Cookie', cookie)
+    expect(coach.status).toBe(200)
+    expect(coach.body.assessmentData).toBeDefined()
+  })
+
   it('ignores a studentId parameter and only returns the session student', async () => {
     const agent = request.agent(app)
     const loginResponse = await login(agent, STUDENT_A.email, STUDENT_A.password)
