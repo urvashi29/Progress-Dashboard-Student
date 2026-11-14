@@ -30,9 +30,13 @@ export function Drawer({ title, eyebrow, onClose, children, wide, headerExtra }:
       if (event.key !== 'Tab' || !panelRef.current) return
       const focusable = Array.from(
         panelRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
         ),
-      ).filter((element) => element.offsetParent !== null)
+      ).filter(
+        (element) =>
+          element.tabIndex >= 0 &&
+          !element.closest('[hidden], [aria-hidden="true"]'),
+      )
 
       if (focusable.length === 0) return
       const first = focusable[0]

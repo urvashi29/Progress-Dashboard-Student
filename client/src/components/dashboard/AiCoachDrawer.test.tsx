@@ -147,3 +147,121 @@ describe('AI Coach drawer', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('AI Coach Gemini and navigation states', () => {
+  it('shows Gemini-generated explanations when the backend returns them', async () => {
+    server.use(
+      http.get('*/api/v1/me/coach', () =>
+        HttpResponse.json({
+          ...MOCK_DASHBOARD.coachSummary,
+          headline: 'Gemini headline for your next modules.',
+          generatedBy: 'gemini',
+          recommendations: MOCK_DASHBOARD.coachSummary.recommendations.map(
+            (recommendation, index) => ({
+              ...recommendation,
+              explanation: `Gemini explanation ${index + 1} for ${recommendation.moduleName}.`,
+            }),
+          ),
+        }),
+      ),
+    )
+
+    await openCoach()
+
+    const dialog = await screen.findByRole('dialog', { name: 'AI Coach' })
+    expect(await within(dialog).findByText('Gemini explanation')).toBeInTheDocument()
+    expect(
+      await within(dialog).findByText(
+        'Gemini explanation 1 for Numerical Programming in Python.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByText('Gemini headline for your next modules.'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the honest empty state when no recommendations exist', async () => {
+    server.use(
+      http.get('*/api/v1/me/coach', () =>
+        HttpResponse.json({
+          ...MOCK_DASHBOARD.coachSummary,
+          headline: 'No module recommendations yet.',
+          recommendations: [],
+        }),
+      ),
+    )
+
+    await openCoach()
+
+    const dialog = await screen.findByRole('dialog', { name: 'AI Coach' })
+    expect(
+      await within(dialog).findByText(
+        /no incomplete module recommendations are available/i,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('navigates to the recommended module when Continue Module is clicked', async () => {
+    const { user } = await openCoach()
+
+    const dialog = await screen.findByRole('dialog', { name: 'AI Coach' })
+    const first = await within(dialog).findByRole('article', {
+      name: 'Numerical Programming in Python',
+    })
+    await user.click(within(first).getByRole('button', { name: 'Continue Module' }))
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Numerical Programming in Python' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'AI Coach' })).not.toBeInTheDocument()
+  })
+
+  it('shows Gemini module guidance when available', async () => {
+    server.use(
+      http.post('*/api/v1/me/coach/modules/:slug/guide', () =>
+        HttpResponse.json({
+          moduleSlug: 'numerical-programming-in-python',
+          moduleName: 'Numerical Programming in Python',
+          progressPct: 80,
+          inPlan: true,
+          guidance: [
+            'Gemini guidance: continue the remaining module content.',
+            'Review the listed numerical methods concepts.',
+            'Use existing quizzes for revision; individual quiz status is unavailable.',
+          ],
+          generatedBy: 'gemini',
+          assessmentData: MOCK_DASHBOARD.coachSummary.assessmentData,
+          disclaimer: MOCK_DASHBOARD.coachSummary.disclaimer,
+          generatedAt: MOCK_DASHBOARD.coachSummary.generatedAt,
+        }),
+      ),
+    )
+
+    const { user } = await openCoach()
+    const dialog = await screen.findByRole('dialog', { name: 'AI Coach' })
+    const first = await within(dialog).findByRole('article', {
+      name: 'Numerical Programming in Python',
+    })
+    await user.click(
+      within(first).getByRole('button', { name: 'How to Complete This Module' }),
+    )
+
+    expect(
+      await within(dialog).findByText('Gemini guidance: continue the remaining module content.'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('Gemini guidance')).toBeInTheDocument()
+  })
+
+  it('keeps keyboard focus inside the drawer while tabbing', async () => {
+    const { user } = await openCoach()
+    const dialog = await screen.findByRole('dialog', { name: 'AI Coach' })
+
+    for (let index = 0; index < 12; index += 1) {
+      await user.tab()
+      expect(dialog.contains(document.activeElement)).toBe(true)
+    }
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+})

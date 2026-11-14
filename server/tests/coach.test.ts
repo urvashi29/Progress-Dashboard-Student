@@ -205,6 +205,29 @@ describe('POST /api/v1/me/coach/modules/:slug/guide', () => {
     expect(fallback.generatedBy).toBe('fallback')
   })
 
+  it('requires authentication', async () => {
+    const response = await request(testApp({ studentId: null })).post(
+      '/api/v1/me/coach/modules/relational-databases/guide',
+    )
+    expect(response.status).toBe(401)
+  })
+
+  it('enforces the guide rate limit', async () => {
+    const limiter = new CoachRateLimiter(1, 60_000, () => NOW.getTime())
+    const app = testApp({ studentId: 1, askRateLimiter: limiter })
+
+    expect(
+      (
+        await request(app).post('/api/v1/me/coach/modules/relational-databases/guide')
+      ).status,
+    ).toBe(200)
+    const limited = await request(app).post(
+      '/api/v1/me/coach/modules/relational-databases/guide',
+    )
+    expect(limited.status).toBe(429)
+    expect(limited.body.error).toBe('coach_rate_limited')
+  })
+
   it('returns 404 for an unknown module', async () => {
     const response = await request(testApp({ studentId: 1 })).post(
       '/api/v1/me/coach/modules/not-a-real-module/guide',
@@ -235,6 +258,39 @@ describe('POST /api/v1/me/coach/ask', () => {
     const answer = CoachAskResponseSchema.parse(response.body)
     expect(answer.generatedBy).toBe('gemini')
     expect(answer.answer).toBe('Continue the first recommended module.')
+  })
+
+  it('falls back deterministically when Gemini times out or returns invalid output', async () => {
+    for (const behavior of ['timeout', 'invalid'] as const) {
+      const response = await request(
+        testApp({ studentId: 1, llm: new FakeCoachLlm(behavior) }),
+      )
+        .post('/api/v1/me/coach/ask')
+        .send({ question: 'What should I do next?' })
+
+      expect(response.status).toBe(200)
+      const answer = CoachAskResponseSchema.parse(response.body)
+      expect(answer.generatedBy).toBe('fallback')
+      expect(answer.answer).toMatch(/actual module progress/i)
+    }
+  })
+
+  it('enforces the ask rate limit', async () => {
+    const limiter = new CoachRateLimiter(1, 60_000, () => NOW.getTime())
+    const app = testApp({ studentId: 1, askRateLimiter: limiter })
+
+    expect(
+      (
+        await request(app)
+          .post('/api/v1/me/coach/ask')
+          .send({ question: 'What should I do next?' })
+      ).status,
+    ).toBe(200)
+    const limited = await request(app)
+      .post('/api/v1/me/coach/ask')
+      .send({ question: 'What should I do next?' })
+    expect(limited.status).toBe(429)
+    expect(limited.body.error).toBe('coach_rate_limited')
   })
 
   it('validates the question and requires authentication', async () => {

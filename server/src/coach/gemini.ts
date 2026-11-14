@@ -89,15 +89,78 @@ const AskResponseSchema = z.object({
   answer: z.string().trim().min(1).max(900),
 })
 
+const ExplainResponseJsonSchema = {
+  type: 'object',
+  properties: {
+    headline: { type: 'string' },
+    recommendations: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 3,
+      items: {
+        type: 'object',
+        properties: {
+          moduleSlug: { type: 'string' },
+          explanation: { type: 'string' },
+        },
+        required: ['moduleSlug', 'explanation'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['headline', 'recommendations'],
+  additionalProperties: false,
+} as const
+
+const GuideResponseJsonSchema = {
+  type: 'object',
+  properties: {
+    guidance: {
+      type: 'array',
+      minItems: 3,
+      maxItems: 5,
+      items: { type: 'string' },
+    },
+  },
+  required: ['guidance'],
+  additionalProperties: false,
+} as const
+
+const AskResponseJsonSchema = {
+  type: 'object',
+  properties: {
+    answer: { type: 'string' },
+  },
+  required: ['answer'],
+  additionalProperties: false,
+} as const
+
 const FORBIDDEN_CLAIM_PATTERNS: readonly RegExp[] = [
+  // Quiz, assessment or coding-question scores and results.
   /\b(?:quiz|assessment|coding[- ]question|test)s?\b[^.]{0,80}\b(?:score|mark|grade|result)\b[^.]{0,80}\b\d{1,3}\s*%/i,
   /\b(?:you|student)\b[^.]{0,80}\b(?:scored|got|received|achieved)\b[^.]{0,80}\b\d{1,3}\s*%/i,
   /\b\d{1,3}\s*%\s*(?:on|in)\b[^.]{0,40}\b(?:quiz|assessment|coding|test)\b/i,
+  // Specific incorrect or wrong questions/answers.
+  /\b(?:incorrect|wrong)\s+(?:answers?|questions?)\b/i,
+  /\b(?:question|questions?)\s+(?:number\s+)?\d+\b[^.]{0,60}\b(?:incorrect(?:ly)?|wrong(?:ly)?|right|correct)\b/i,
+  /\b(?:you|student)\b[^.]{0,40}\b(?:answered|got|marked)\b[^.]{0,40}\b(?:incorrect(?:ly)?|wrong(?:ly)?)\b/i,
+  // Specific attempt or completion counts for learning activities.
+  /\b(?:attempted|tried|submitted|solved|completed)\b[^.]{0,30}\b\d+\b[^.]{0,20}\b(?:coding[- ]questions?|questions?)\b/i,
+  /\b\d+\s+(?:coding[- ]questions?|quizzes?|assessments?|questions?|tests?)\b[^.]{0,40}\b(?:attempted|submitted|solved|completed)\b/i,
+  /\b(?:you|student)\b[^.]{0,40}\b(?:attempted|submitted|solved|completed)\b[^.]{0,30}\b(?:coding[- ]questions?|quizzes?|assessments?|tests?)\b/i,
+  // Pending, failed or passed statuses.
   /\b(?:pending|unsubmitted|unattempted|failed|passed)\b[^.]{0,60}\b(?:quiz|assessment|coding[- ]question|test)\b/i,
   /\b(?:quiz|assessment|coding[- ]question|test)\b[^.]{0,60}\b(?:pending|unsubmitted|unattempted|failed|passed)\b/i,
+  // Personal eligibility claims.
+  /\b(?:you|student)\b[^.]{0,50}\b(?:are|is|meet|meets|satisfy|satisfies)\b[^.]{0,40}\b(?:eligible|eligibility)\b/i,
+  /\b(?:eligible|eligibility)\b[^.]{0,50}\b(?:confirmed|approved|granted|met)\b/i,
+  // Invented durations, assignments, challenges and external resources.
   /\b\d+\s*(?:minutes?|hours?|days?|weeks?)\b/i,
+  /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|couple|few)\s+(?:minutes?|hours?|days?|weeks?)\b/i,
+  /\b(?:an?|a)\s+(?:minute|hour|day|week)\b/i,
   /\bassignment\b/i,
   /\bchallenge\b/i,
+  /\b(?:external|additional|recommended|curated|supplementary)\b[^.]{0,40}\b(?:resources?|courses?|tutorials?|articles?|books?|videos?|websites?)\b/i,
 ]
 
 export function containsUnsupportedClaim(text: string): boolean {
@@ -204,7 +267,9 @@ Hard rules:
 - You may give general advice about continuing module content, reviewing concepts, using existing quizzes for revision, completing existing coding questions where applicable, and attempting assessments under their published eligibility rules.
 - Do not mention student names, emails or any personal data. None is supplied.
 - Keep explanations concise, concrete and encouraging.
-- Return JSON only, with no markdown fences.`
+- Return JSON only, with no markdown fences, using exactly this shape:
+  {"headline":"...","recommendations":[{"moduleSlug":"<exact supplied moduleSlug>","explanation":"..."}]}
+- Include every supplied recommendation once, in the same order, and use its exact moduleSlug.`
 
 const GUIDE_SYSTEM_INSTRUCTION = `You are the AI Skill Coach for a student learning dashboard.
 Write short, practical guidance for completing one existing module using only the supplied verified fields.
@@ -246,6 +311,7 @@ export class GeminiCoachLlm implements CoachLlm {
     systemInstruction: string,
     contents: string,
     maxOutputTokens: number,
+    responseJsonSchema: unknown,
     signal?: AbortSignal,
   ): Promise<string> {
     const client = this.getClient()
@@ -260,6 +326,7 @@ export class GeminiCoachLlm implements CoachLlm {
           temperature: 0.2,
           maxOutputTokens,
           responseMimeType: 'application/json',
+          responseJsonSchema,
           abortSignal,
         },
       })
@@ -285,6 +352,7 @@ export class GeminiCoachLlm implements CoachLlm {
       COACH_SYSTEM_INSTRUCTION,
       promptContext(input.recommendations, input.assessmentData),
       900,
+      ExplainResponseJsonSchema,
       signal,
     )
 
@@ -328,7 +396,13 @@ export class GeminiCoachLlm implements CoachLlm {
       null,
       2,
     )
-    const raw = await this.generateJson(GUIDE_SYSTEM_INSTRUCTION, contents, 500, signal)
+    const raw = await this.generateJson(
+      GUIDE_SYSTEM_INSTRUCTION,
+      contents,
+      500,
+      GuideResponseJsonSchema,
+      signal,
+    )
     const parsed = ModuleGuideResponseSchema.safeParse(parseJson(raw))
     if (!parsed.success) {
       throw new CoachLlmError('invalid_output', 'Gemini guide did not match the schema.')
@@ -356,7 +430,13 @@ export class GeminiCoachLlm implements CoachLlm {
       null,
       2,
     )
-    const raw = await this.generateJson(ASK_SYSTEM_INSTRUCTION, contents, 600, signal)
+    const raw = await this.generateJson(
+      ASK_SYSTEM_INSTRUCTION,
+      contents,
+      600,
+      AskResponseJsonSchema,
+      signal,
+    )
     const parsed = AskResponseSchema.safeParse(parseJson(raw))
     if (!parsed.success) {
       throw new CoachLlmError('invalid_output', 'Gemini answer did not match the schema.')
